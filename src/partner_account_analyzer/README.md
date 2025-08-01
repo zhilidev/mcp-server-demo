@@ -77,11 +77,11 @@ pip install -r requirements.txt
 
 系统自动识别以下CSV文件格式：
 
-### 日期格式支持
+**日期格式支持**
 - **MMDD格式**: 如 0513, 0731 (月日，4位数字)
 - **YYYYMMDD格式**: 如 20250513, 20250731 (年月日，8位数字) 
 
-### 文件名格式支持
+**文件名格式支持**
 - `{客户名}-CMC-accounts-{日期}.csv` 
   - 示例: `customer1-CMC-accounts-0513.csv`
   - 示例: `customer1-CMC-accounts-20250513.csv`
