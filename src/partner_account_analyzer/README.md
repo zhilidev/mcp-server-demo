@@ -35,6 +35,8 @@ mcp-server-demo/
 **Step 1. 环境准备**
 
 ```bash
+# clone 本项目
+git clone git@github.com:zhilidev/mcp-server-demo.git
 # 进入项目目录
 cd /path/to/mcp-server-demo
 
@@ -76,24 +78,18 @@ pip install -r requirements.txt
 
 ### 日期格式支持
 - **MMDD格式**: 如 0513, 0731 (月日，4位数字)
-- **YYYYMMDD格式**: 如 20250513, 20250731 (年月日，8位数字) ✨ **新支持**
+- **YYYYMMDD格式**: 如 20250513, 20250731 (年月日，8位数字) 
 
 ### 文件名格式支持
 - `{客户名}-CMC-accounts-{日期}.csv` 
   - 示例: `customer1-CMC-accounts-0513.csv`
   - 示例: `customer1-CMC-accounts-20250513.csv`
-- `{客户名}-accounts-{日期}.csv` ✨ **新支持**
+- `{客户名}-accounts-{日期}.csv` 
   - 示例: `customer1-accounts-0513.csv`
   - 示例: `customer1-accounts-20250513.csv`
 - `accounts-{日期}.csv`
   - 示例: `accounts-0513.csv`
-  - 示例: `accounts-20250513.csv` ✨ **新支持**
+  - 示例: `accounts-20250513.csv`
 - `CMC-accounts-{日期}.csv`
   - 示例: `CMC-accounts-0513.csv`
   - 示例: `CMC-accounts-20250513.csv`
-
-### 智能日期处理
-- 系统会自动识别和转换不同的日期格式
-- 内部统一使用 MMDD 格式进行处理和显示
-- 支持混合使用不同格式的文件
-- 用户可以使用任一格式的日期进行查询
