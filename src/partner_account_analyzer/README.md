@@ -42,7 +42,7 @@ cd /path/to/mcp-server-demo
 pip install -r requirements.txt
 ```
 
-**step 2. 配置Amazon Q，将MCP配置添加到Amazon Q配置文件**
+**step 2. 配置Amazon Q，将MCP配置添加到Amazon Q配置文件。重启配置Amazon Q。**
 
 ```json
 {
