@@ -22,9 +22,9 @@ DATA_ROOT_DIR = os.getenv('ACCOUNT_DATA_DIR', os.path.expanduser('~/account-data
 mcp = FastMCP(
     "account-analyzer",
     instructions="""
-    # Account Enterprise账号分析服务器
+    # Account Enterprise账号分析服务器 (深度分析增强版)
 
-    这个服务器分析Enterprise级别账号变化情况。
+    这个服务器分析Enterprise级别账号变化情况，并新增了Overall业务分析功能和深度业务洞察分析。
     支持Tools、Resources和Prompts三种MCP功能，支持多客户分析。
 
     ## 多客户支持
@@ -36,45 +36,119 @@ mcp = FastMCP(
 
     ## 可用工具 (Tools)
 
-    ### 客户管理工具
-    - `get_available_customers`: 获取所有可用的客户列表
-    - `compare_customers`: 比较不同客户的账号规模和变化
-    - `get_all_customers_summary`: 获取所有客户的汇总信息
-
-    ### 基础分析工具 (需要customer参数)
-    - `compare_payer_changes`: 比较指定客户两个日期之间的变化
-    - `simple_payer_summary`: 生成指定客户的简单摘要
+    ### Enterprise账号分析工具 (需要customer参数)
+    - `compare_payer_changes`: 比较指定客户两个日期之间的Enterprise变化
     - `get_available_dates_tool`: 获取指定客户的所有可用数据日期
-    - `analyze_recent_changes`: 分析指定客户最近N天的趋势
-    - `get_account_details`: 获取指定客户特定日期的详细信息
-    - `analyze_single_date_accounts`: 分析指定客户在特定日期的完整账号情况 (适用于单日数据)
+    - `analyze_single_date_accounts`: 分析指定客户在特定日期的Enterprise账号情况
+    - `get_detailed_linked_changes`: 获取详细的Enterprise Linked账号变化信息
 
-    ### 高级追踪工具 (需要customer参数)
-    - `track_account_history`: 追踪指定客户特定账号的完整历史变化
-    - `analyze_payer_linked_changes`: 分析指定客户特定Payer下Linked账号的详细变化
+    ### 🆕 深度业务分析工具 
+    - `analyze_payer_detailed_distribution`: 深度分析Payer账号分布和每个Payer的详细特征
+    - `analyze_industry_insights`: 从账号信息中分析推断行业特征和业务模式
+    - `analyze_comprehensive_business_insights`: 综合分析业务洞察，整合多维度分析结果
+
+    ### 🆕 Overall业务分析工具 
+    - `analyze_partner_overall_business`: 分析指定客户的整体业务情况 (所有支持级别)
+    - `compare_partner_overall_changes`: 比较指定客户两个日期之间的整体业务变化
+    - `analyze_partner_business_segments`: 分析指定客户的业务细分情况 (通过标签识别业务线)
+
+    ## 功能对比
+
+    ### Enterprise专用分析 vs Overall业务分析 vs 深度业务洞察
+    
+    **Enterprise专用分析** :
+    - 只分析Support Level为"ENTERPRISE"的账号
+    - 专注于高价值客户的详细变化
+    - 适用于Enterprise客户管理和优化
+    
+    **Overall业务分析** :
+    - 分析所有支持级别的账号 (Enterprise, Business, Developer, Basic)
+    - 了解partner的完整业务图景
+    - 识别业务线和客户结构特征
+    - 评估业务价值分布和成熟度
+
+    **深度业务洞察** :
+    - 🏢 **Payer分布分析**: 详细分析每个Payer的管理负载和特征
+    - 🏭 **行业特征识别**: 从账号名称和标签推断行业和业务模式
+    - 📝 **命名模式分析**: 分析账号命名规律，评估管理规范化程度
+    - 🎯 **综合业务洞察**: 整合多维度分析，提供战略建议和成熟度评估
+
+    ## 深度分析功能详解
+
+    ### 🏢 Payer分布深度分析
+    - **负载分布**: 分析每个Payer管理的Linked账号数量分布
+    - **支持级别分析**: 每个Payer下属账号的支持级别构成
+    - **业务标签分析**: 基于标签的业务线识别和分布
+    - **管理效率评估**: 基尼系数计算管理负载均衡度
+    - **优化建议**: 基于负载分析的管理结构优化建议
+
+    ### 🏭 行业特征智能识别
+    - **关键词匹配**: 基于10大行业的关键词库进行智能匹配
+    - **行业分布**: 计算各行业的信号强度和占比
+    - **多样性评估**: 评估业务的行业多元化程度
+    - **主要行业识别**: 识别客户的主要业务领域
+    - **业务模式推断**: 基于行业特征推断业务模式
+
+    ### 📝 命名模式深度分析
+    - **模式识别**: 识别7种主要命名模式 (环境、区域、功能、团队、项目、编号、层级)
+    - **一致性评分**: 计算命名规范化程度得分
+    - **架构推断**: 基于命名模式推断技术架构特征
+    - **成熟度评估**: 评估组织的技术和管理成熟度
+    - **规范化建议**: 提供命名规范优化建议
+
+    ### 🎯 综合业务洞察
+    - **多维度整合**: 整合Payer分布、行业特征、命名模式等分析结果
+    - **成熟度评估**: 5个维度的业务成熟度评分系统
+    - **关键发现**: 自动识别和总结关键业务特征
+    - **战略建议**: 基于分析结果生成具体的改进建议
+    - **监控指标**: 推荐关键业务指标和监控方案
 
     ## 可用资源 (Resources)
 
-    - `customer-data://{customer}`: 访问特定客户的基本信息
-    - `account-data://{customer}/{date}`: 访问特定客户特定日期的原始账号数据
-    - `summary://{customer}/latest`: 获取特定客户最新的账号摘要信息
+    - `customer-data://{customer}`: 访问特定客户的基本信息 (Enterprise数据)
+    - `account-data://{customer}/{date}`: 访问特定客户特定日期的原始账号数据 (Enterprise数据)
+    - `summary://{customer}/latest`: 获取特定客户最新的账号摘要信息 (Enterprise数据)
 
     ## 可用提示 (Prompts)
 
     - `analyze-trends`: 账号变化趋势分析模板
     - `monthly-report`: 月度报告生成模板
-    - `multi-customer-report`: 多客户对比分析模板
+    - `overall-business-analysis`: Overall业务分析模板 
 
     ## 数据来源
 
     分析指定数据目录下按客户分组的CSV文件。
-    只处理Support Level为"ENTERPRISE"的记录。
+    - Enterprise分析: 只处理Support Level为"ENTERPRISE"的记录
+    - Overall分析: 处理所有Support Level的记录
+    - 深度分析: 基于所有账号数据进行多维度分析
 
     ## 使用方法
 
-    1. 首先获取可用客户: get_available_customers()
-    2. 指定客户进行分析，如: customer="customer1" 或 customer="customer2"
-    3. 日期格式为4位数字，如：0723, 0730, 0731
+    ### Enterprise分析 
+    1. 分析Enterprise变化: compare_payer_changes(customer, date1, date2)
+    2. 获取详细信息: get_detailed_linked_changes(customer, date1, date2)
+    3. 获取可用日期: get_available_dates_tool(customer)
+
+    ### Overall业务分析
+    1. 整体业务分析: analyze_partner_overall_business(customer, date)
+    2. 业务变化对比: compare_partner_overall_changes(customer, date1, date2)
+    3. 业务细分分析: analyze_partner_business_segments(customer, date)
+
+    ### 深度业务洞察
+    1. Payer分布分析: analyze_payer_detailed_distribution(customer, date)
+    2. 行业特征分析: analyze_industry_insights(customer, date)
+    3. 综合业务洞察: analyze_comprehensive_business_insights(customer, date)
+
+    ## 分析维度对比
+
+    | 分析类型 | 数据范围 | 主要用途 | 分析深度 |
+    |---------|---------|---------|---------|
+    | Enterprise专用 | 仅Enterprise账号 | 高价值客户管理 | 基础分析 |
+    | Overall业务 | 所有支持级别 | 完整业务图景 | 中等分析 |
+    | 深度洞察 | 所有账号+智能推断 | 战略决策支持 | 深度分析 |
+
+    ## 日期格式
+    日期格式为4位数字，如：0723, 0730, 0731
     """
 )
 
@@ -93,6 +167,18 @@ class AccountRecord:
     def is_enterprise(self) -> bool:
         """检查是否为Enterprise级别"""
         return self.support_level.upper() == "ENTERPRISE"
+    
+    def is_business(self) -> bool:
+        """检查是否为Business级别"""
+        return self.support_level.upper() == "BUSINESS"
+    
+    def is_developer(self) -> bool:
+        """检查是否为Developer级别"""
+        return self.support_level.upper() == "DEVELOPER"
+    
+    def is_basic(self) -> bool:
+        """检查是否为Basic级别"""
+        return self.support_level.upper() == "BASIC"
     
     def is_payer(self) -> bool:
         """检查是否为Payer账号"""
@@ -221,10 +307,14 @@ def load_accounts_data(customer: str, date: str) -> List[AccountRecord]:
         reader = csv.DictReader(file)
         for row in reader:
             account = AccountRecord(row)
-            if account.is_enterprise():  # 只处理Enterprise级别的账号
-                accounts.append(account)
+            accounts.append(account)  # 加载所有账号，不再只限制Enterprise
     
     return accounts
+
+def load_enterprise_accounts_data(customer: str, date: str) -> List[AccountRecord]:
+    """加载指定客户指定日期的Enterprise账号数据（保持向后兼容）"""
+    all_accounts = load_accounts_data(customer, date)
+    return [account for account in all_accounts if account.is_enterprise()]
 
 def parse_date_string(date_str: str) -> datetime:
     """将MMDD格式的日期字符串转换为datetime对象"""
@@ -256,11 +346,12 @@ def get_recent_dates(customer: str, days: int = 7) -> List[str]:
 
 def analyze_enterprise_accounts(accounts: List[AccountRecord]) -> Dict:
     """分析Enterprise账号数据"""
+    enterprise_accounts = [account for account in accounts if account.is_enterprise()]
     payer_accounts = []
     linked_accounts = []
     payer_to_linked = defaultdict(list)
     
-    for account in accounts:
+    for account in enterprise_accounts:
         if account.is_payer():
             payer_accounts.append(account)
         elif account.is_linked():
@@ -273,107 +364,82 @@ def analyze_enterprise_accounts(accounts: List[AccountRecord]) -> Dict:
         "payer_to_linked": dict(payer_to_linked),
         "total_payers": len(payer_accounts),
         "total_linked": len(linked_accounts),
-        "total_accounts": len(accounts)
+        "total_accounts": len(enterprise_accounts)
     }
 
-# ============ 新增客户管理工具 ============
+def analyze_all_accounts(accounts: List[AccountRecord]) -> Dict:
+    """分析所有账号数据（不限制支持级别）"""
+    # 按支持级别分类
+    support_level_stats = defaultdict(int)
+    account_type_stats = defaultdict(int)
+    status_stats = defaultdict(int)
+    
+    payer_accounts = []
+    linked_accounts = []
+    payer_to_linked = defaultdict(list)
+    
+    # 按支持级别分组
+    enterprise_accounts = []
+    business_accounts = []
+    developer_accounts = []
+    basic_accounts = []
+    other_accounts = []
+    
+    for account in accounts:
+        # 统计支持级别
+        support_level_stats[account.support_level] += 1
+        account_type_stats[account.account_type] += 1
+        status_stats[account.status] += 1
+        
+        # 分类账号类型
+        if account.is_payer():
+            payer_accounts.append(account)
+        elif account.is_linked():
+            linked_accounts.append(account)
+            payer_to_linked[account.payer_id].append(account)
+        
+        # 按支持级别分组
+        if account.is_enterprise():
+            enterprise_accounts.append(account)
+        elif account.is_business():
+            business_accounts.append(account)
+        elif account.is_developer():
+            developer_accounts.append(account)
+        elif account.is_basic():
+            basic_accounts.append(account)
+        else:
+            other_accounts.append(account)
+    
+    return {
+        "all_accounts": accounts,
+        "payer_accounts": payer_accounts,
+        "linked_accounts": linked_accounts,
+        "payer_to_linked": dict(payer_to_linked),
+        "total_payers": len(payer_accounts),
+        "total_linked": len(linked_accounts),
+        "total_accounts": len(accounts),
+        
+        # 按支持级别分组
+        "enterprise_accounts": enterprise_accounts,
+        "business_accounts": business_accounts,
+        "developer_accounts": developer_accounts,
+        "basic_accounts": basic_accounts,
+        "other_accounts": other_accounts,
+        
+        # 统计信息
+        "support_level_stats": dict(support_level_stats),
+        "account_type_stats": dict(account_type_stats),
+        "status_stats": dict(status_stats),
+        
+        # 支持级别计数
+        "total_enterprise": len(enterprise_accounts),
+        "total_business": len(business_accounts),
+        "total_developer": len(developer_accounts),
+        "total_basic": len(basic_accounts),
+        "total_other": len(other_accounts)
+    }
 
-@mcp.tool()
-def get_available_customers_tool() -> str:
-    """获取所有可用的客户列表"""
-    try:
-        customers = get_available_customers()
-        if not customers:
-            return "❌ 未找到任何客户数据文件夹"
-        
-        result = f"🏢 **可用客户** ({len(customers)} 个):\n\n"
-        for customer in customers:
-            customer_dir = get_customer_data_dir(customer)
-            dates = get_available_dates(customer)
-            result += f"- **{customer}**\n"
-            result += f"  - 📁 路径: {customer_dir}\n"
-            result += f"  - 📅 数据日期: {len(dates)} 个 ({', '.join(dates) if dates else '无'})\n"
-            
-            # 显示最新数据的简要信息
-            if dates:
-                try:
-                    latest_date = dates[-1]
-                    accounts = load_accounts_data(customer, latest_date)
-                    analysis = analyze_enterprise_accounts(accounts)
-                    result += f"  - 📊 最新数据({latest_date}): {analysis['total_payers']} Payer, {analysis['total_linked']} Linked\n"
-                except Exception:
-                    result += f"  - ⚠️  最新数据加载失败\n"
-            result += "\n"
-        
-        return result
-    except Exception as e:
-        return f"获取客户列表失败: {str(e)}"
-
-@mcp.tool()
-def compare_customers(
-    date: str = Field(description="比较日期 (格式: 0731)")
-) -> str:
-    """比较不同客户在指定日期的账号规模"""
-    try:
-        customers = get_available_customers()
-        if not customers:
-            return "❌ 未找到任何客户"
-        
-        customer_stats = []
-        for customer in customers:
-            try:
-                accounts = load_accounts_data(customer, date)
-                analysis = analyze_enterprise_accounts(accounts)
-                customer_stats.append({
-                    "customer": customer,
-                    "payers": analysis["total_payers"],
-                    "linked": analysis["total_linked"],
-                    "total": analysis["total_accounts"]
-                })
-            except Exception as e:
-                customer_stats.append({
-                    "customer": customer,
-                    "error": str(e)
-                })
-        
-        # 生成对比报告
-        report = f"# 🏢 客户账号规模对比 ({date})\n\n"
-        
-        # 成功加载的客户统计
-        valid_stats = [s for s in customer_stats if "error" not in s]
-        if valid_stats:
-            # 按总账号数排序
-            valid_stats.sort(key=lambda x: x["total"], reverse=True)
-            
-            report += "## 📊 账号规模排名\n\n"
-            report += "| 排名 | 客户 | Payer账号 | Linked账号 | 总计 |\n"
-            report += "|------|------|-----------|------------|------|\n"
-            
-            for i, stat in enumerate(valid_stats, 1):
-                report += f"| {i} | {stat['customer']} | {stat['payers']} | {stat['linked']} | {stat['total']} |\n"
-            
-            # 汇总统计
-            total_payers = sum(s["payers"] for s in valid_stats)
-            total_linked = sum(s["linked"] for s in valid_stats)
-            total_accounts = sum(s["total"] for s in valid_stats)
-            
-            report += f"\n**📈 汇总统计**:\n"
-            report += f"- 总客户数: {len(valid_stats)} 个\n"
-            report += f"- 总Payer账号: {total_payers} 个\n"
-            report += f"- 总Linked账号: {total_linked} 个\n"
-            report += f"- 总Enterprise账号: {total_accounts} 个\n"
-        
-        # 加载失败的客户
-        error_stats = [s for s in customer_stats if "error" in s]
-        if error_stats:
-            report += "\n## ⚠️  数据加载失败的客户\n\n"
-            for stat in error_stats:
-                report += f"- **{stat['customer']}**: {stat['error']}\n"
-        
-        return report
-        
-    except Exception as e:
-        return f"客户对比分析失败: {str(e)}"
+# ============ 基础分析工具 ============
 
 # ============ 更新后的基础分析工具 ============
 
@@ -410,8 +476,8 @@ def compare_payer_changes(
     
     try:
         # 加载两个日期的数据
-        accounts1 = load_accounts_data(customer, date1)
-        accounts2 = load_accounts_data(customer, date2)
+        accounts1 = load_enterprise_accounts_data(customer, date1)  # 使用Enterprise专用函数
+        accounts2 = load_enterprise_accounts_data(customer, date2)  # 使用Enterprise专用函数
         
         # 分析数据
         analysis1 = analyze_enterprise_accounts(accounts1)
@@ -575,8 +641,8 @@ def get_payer_name_by_id(customer: str, payer_id: str, date: str) -> str:
 def analyze_linked_account_changes(customer: str, date1: str, date2: str) -> Dict:
     """详细分析指定客户Linked账号的变化情况"""
     try:
-        accounts1 = load_accounts_data(customer, date1)
-        accounts2 = load_accounts_data(customer, date2)
+        accounts1 = load_enterprise_accounts_data(customer, date1)  # 使用Enterprise专用函数
+        accounts2 = load_enterprise_accounts_data(customer, date2)  # 使用Enterprise专用函数
         
         analysis1 = analyze_enterprise_accounts(accounts1)
         analysis2 = analyze_enterprise_accounts(accounts2)
@@ -632,8 +698,8 @@ def get_detailed_linked_changes(
     
     try:
         # 加载两个日期的数据
-        accounts1 = load_accounts_data(customer, date1)
-        accounts2 = load_accounts_data(customer, date2)
+        accounts1 = load_enterprise_accounts_data(customer, date1)  # 使用Enterprise专用函数
+        accounts2 = load_enterprise_accounts_data(customer, date2)  # 使用Enterprise专用函数
         
         # 分析数据
         analysis1 = analyze_enterprise_accounts(accounts1)
@@ -770,7 +836,7 @@ def analyze_single_date_accounts(
     
     try:
         # 加载指定日期的数据
-        accounts = load_accounts_data(customer, date)
+        accounts = load_enterprise_accounts_data(customer, date)  # 使用Enterprise专用函数
         analysis = analyze_enterprise_accounts(accounts)
         
         # 生成详细的单日分析报告
@@ -927,10 +993,1199 @@ def analyze_single_date_accounts(
         return report
         
     except Exception as e:
-        return f"分析客户 {customer} 在 {date} 的账号情况失败: {str(e)}"
+        return f"❌ 分析过程中发生错误: {str(e)}"
 
+# ============ 深度分析工具 ============
 
-# ============ MCP Resources ============
+def analyze_payer_distribution(accounts: List[AccountRecord]) -> Dict:
+    """深度分析Payer账号分布和特征"""
+    payer_accounts = [account for account in accounts if account.is_payer()]
+    linked_accounts = [account for account in accounts if account.is_linked()]
+    
+    # 按Payer分组Linked账号
+    payer_to_linked = defaultdict(list)
+    for linked in linked_accounts:
+        payer_to_linked[linked.payer_id].append(linked)
+    
+    # 分析每个Payer的详细信息
+    payer_analysis = []
+    for payer in payer_accounts:
+        linked_list = payer_to_linked.get(payer.account_id, [])
+        
+        # 分析Linked账号的支持级别分布
+        support_level_dist = defaultdict(int)
+        for linked in linked_list:
+            support_level_dist[linked.support_level] += 1
+        
+        # 分析标签分布
+        tag_analysis = defaultdict(int)
+        for linked in linked_list:
+            if linked.tags:
+                tags = [tag.strip() for tag in linked.tags.replace(';', ',').split(',') if tag.strip()]
+                for tag in tags:
+                    tag_analysis[tag] += 1
+        
+        payer_info = {
+            'payer': payer,
+            'linked_count': len(linked_list),
+            'linked_accounts': linked_list,
+            'support_level_distribution': dict(support_level_dist),
+            'tag_distribution': dict(tag_analysis),
+            'avg_linked_per_support_level': len(linked_list) / max(1, len(support_level_dist))
+        }
+        payer_analysis.append(payer_info)
+    
+    # 按管理的账号数量排序
+    payer_analysis.sort(key=lambda x: x['linked_count'], reverse=True)
+    
+    return {
+        'payer_analysis': payer_analysis,
+        'total_payers': len(payer_accounts),
+        'total_linked': len(linked_accounts),
+        'avg_linked_per_payer': len(linked_accounts) / max(1, len(payer_accounts)),
+        'payer_load_distribution': _calculate_payer_load_distribution(payer_analysis)
+    }
+
+def _calculate_payer_load_distribution(payer_analysis: List[Dict]) -> Dict:
+    """计算Payer负载分布"""
+    load_categories = {
+        'no_linked': 0,      # 0个Linked
+        'light_load': 0,     # 1-3个Linked
+        'medium_load': 0,    # 4-10个Linked
+        'heavy_load': 0,     # 11-20个Linked
+        'super_heavy': 0     # 20+个Linked
+    }
+    
+    for payer_info in payer_analysis:
+        linked_count = payer_info['linked_count']
+        if linked_count == 0:
+            load_categories['no_linked'] += 1
+        elif linked_count <= 3:
+            load_categories['light_load'] += 1
+        elif linked_count <= 10:
+            load_categories['medium_load'] += 1
+        elif linked_count <= 20:
+            load_categories['heavy_load'] += 1
+        else:
+            load_categories['super_heavy'] += 1
+    
+    return load_categories
+
+def infer_industry_from_account_info(accounts: List[AccountRecord]) -> Dict:
+    """从账号信息推断行业特征"""
+    
+    # 行业关键词映射
+    industry_keywords = {
+        'technology': ['tech', 'software', 'dev', 'api', 'cloud', 'data', 'ai', 'ml', 'analytics'],
+        'finance': ['bank', 'finance', 'payment', 'trading', 'fintech', 'credit', 'loan', 'insurance'],
+        'healthcare': ['health', 'medical', 'hospital', 'pharma', 'bio', 'clinic', 'patient'],
+        'retail': ['retail', 'shop', 'store', 'ecommerce', 'marketplace', 'commerce', 'sales'],
+        'media': ['media', 'content', 'streaming', 'video', 'audio', 'broadcast', 'news'],
+        'education': ['edu', 'school', 'university', 'learning', 'training', 'course'],
+        'gaming': ['game', 'gaming', 'entertainment', 'mobile', 'studio'],
+        'logistics': ['logistics', 'shipping', 'delivery', 'transport', 'supply'],
+        'manufacturing': ['manufacturing', 'factory', 'production', 'industrial'],
+        'government': ['gov', 'government', 'public', 'municipal', 'federal']
+    }
+    
+    industry_scores = defaultdict(int)
+    account_industry_mapping = {}
+    
+    for account in accounts:
+        account_text = f"{account.account_name} {account.tags or ''}".lower()
+        account_industries = []
+        
+        for industry, keywords in industry_keywords.items():
+            for keyword in keywords:
+                if keyword in account_text:
+                    industry_scores[industry] += 1
+                    if industry not in account_industries:
+                        account_industries.append(industry)
+        
+        account_industry_mapping[account.account_id] = account_industries
+    
+    # 计算行业多样性
+    total_accounts = len(accounts)
+    industry_distribution = {}
+    for industry, score in industry_scores.items():
+        industry_distribution[industry] = {
+            'score': score,
+            'percentage': (score / total_accounts) * 100 if total_accounts > 0 else 0
+        }
+    
+    # 确定主要行业
+    primary_industries = sorted(industry_distribution.items(), 
+                              key=lambda x: x[1]['score'], reverse=True)[:3]
+    
+    return {
+        'industry_distribution': industry_distribution,
+        'primary_industries': primary_industries,
+        'account_industry_mapping': account_industry_mapping,
+        'industry_diversity_score': len([i for i in industry_scores.values() if i > 0]),
+        'total_industry_signals': sum(industry_scores.values())
+    }
+
+def analyze_account_naming_patterns(accounts: List[AccountRecord]) -> Dict:
+    """分析账号命名模式以获取更多业务洞察"""
+    
+    naming_patterns = {
+        'environment_based': 0,  # prod, dev, test, staging
+        'region_based': 0,       # us, eu, asia, east, west
+        'function_based': 0,     # api, web, db, analytics
+        'team_based': 0,         # team, dept, division
+        'project_based': 0,      # project, app, service
+        'numbered': 0,           # 包含数字的账号
+        'hierarchical': 0        # 包含层级结构的账号
+    }
+    
+    environment_keywords = ['prod', 'production', 'dev', 'development', 'test', 'testing', 'staging', 'demo']
+    region_keywords = ['us', 'eu', 'asia', 'east', 'west', 'north', 'south', 'global', 'region']
+    function_keywords = ['api', 'web', 'db', 'database', 'analytics', 'data', 'ml', 'ai', 'backend', 'frontend']
+    team_keywords = ['team', 'dept', 'department', 'division', 'group', 'unit']
+    project_keywords = ['project', 'app', 'application', 'service', 'platform', 'system']
+    
+    pattern_examples = defaultdict(list)
+    
+    for account in accounts:
+        name_lower = account.account_name.lower()
+        
+        # 检查各种模式
+        if any(keyword in name_lower for keyword in environment_keywords):
+            naming_patterns['environment_based'] += 1
+            pattern_examples['environment_based'].append(account.account_name)
+        
+        if any(keyword in name_lower for keyword in region_keywords):
+            naming_patterns['region_based'] += 1
+            pattern_examples['region_based'].append(account.account_name)
+        
+        if any(keyword in name_lower for keyword in function_keywords):
+            naming_patterns['function_based'] += 1
+            pattern_examples['function_based'].append(account.account_name)
+        
+        if any(keyword in name_lower for keyword in team_keywords):
+            naming_patterns['team_based'] += 1
+            pattern_examples['team_based'].append(account.account_name)
+        
+        if any(keyword in name_lower for keyword in project_keywords):
+            naming_patterns['project_based'] += 1
+            pattern_examples['project_based'].append(account.account_name)
+        
+        if any(char.isdigit() for char in account.account_name):
+            naming_patterns['numbered'] += 1
+            pattern_examples['numbered'].append(account.account_name)
+        
+        if '-' in account.account_name or '_' in account.account_name:
+            naming_patterns['hierarchical'] += 1
+            pattern_examples['hierarchical'].append(account.account_name)
+    
+    # 限制示例数量
+    for pattern in pattern_examples:
+        pattern_examples[pattern] = pattern_examples[pattern][:5]
+    
+    return {
+        'naming_patterns': naming_patterns,
+        'pattern_examples': dict(pattern_examples),
+        'total_accounts': len(accounts),
+        'naming_consistency_score': _calculate_naming_consistency(accounts)
+    }
+
+def _calculate_naming_consistency(accounts: List[AccountRecord]) -> float:
+    """计算命名一致性得分"""
+    if len(accounts) < 2:
+        return 1.0
+    
+    # 分析命名长度的一致性
+    name_lengths = [len(account.account_name) for account in accounts]
+    avg_length = sum(name_lengths) / len(name_lengths)
+    length_variance = sum((length - avg_length) ** 2 for length in name_lengths) / len(name_lengths)
+    
+    # 分析分隔符使用的一致性
+    separator_usage = defaultdict(int)
+    for account in accounts:
+        if '-' in account.account_name:
+            separator_usage['hyphen'] += 1
+        if '_' in account.account_name:
+            separator_usage['underscore'] += 1
+        if ' ' in account.account_name:
+            separator_usage['space'] += 1
+    
+    # 计算一致性得分 (0-1之间)
+    length_consistency = max(0, 1 - (length_variance / (avg_length ** 2)))
+    separator_consistency = max(separator_usage.values()) / len(accounts) if separator_usage else 0.5
+    
+    return (length_consistency + separator_consistency) / 2
+
+@mcp.tool()
+def analyze_payer_detailed_distribution(
+    customer: str = Field(description="客户名称 (如: 泰岳, verycloud)"),
+    date: str = Field(description="分析日期 (格式: 0731)")
+) -> str:
+    """深度分析指定客户的Payer账号分布和每个Payer的详细特征"""
+    
+    try:
+        # 加载指定日期的所有账号数据
+        accounts = load_accounts_data(customer, date)
+        payer_analysis = analyze_payer_distribution(accounts)
+        
+        # 生成详细的Payer分布分析报告
+        report = f"""# 🏢 {customer} Payer账号深度分析报告 ({date})
+
+## 📊 Payer账号总体概览
+- **Payer账号总数**: {payer_analysis['total_payers']} 个
+- **Linked账号总数**: {payer_analysis['total_linked']} 个
+- **平均每个Payer管理**: {payer_analysis['avg_linked_per_payer']:.1f} 个Linked账号
+
+## 📈 Payer负载分布分析
+"""
+        
+        load_dist = payer_analysis['payer_load_distribution']
+        total_payers = payer_analysis['total_payers']
+        
+        load_categories = [
+            ('无Linked账号', load_dist['no_linked'], '🔴'),
+            ('轻负载 (1-3个)', load_dist['light_load'], '🟢'),
+            ('中负载 (4-10个)', load_dist['medium_load'], '🟡'),
+            ('重负载 (11-20个)', load_dist['heavy_load'], '🟠'),
+            ('超重负载 (20+个)', load_dist['super_heavy'], '🔴')
+        ]
+        
+        for category, count, icon in load_categories:
+            if count > 0:
+                percentage = (count / total_payers) * 100 if total_payers > 0 else 0
+                report += f"- {icon} **{category}**: {count} 个Payer ({percentage:.1f}%)\n"
+        
+        # 详细的Payer账号分析
+        report += f"""
+
+## 🔍 Top 10 Payer账号详细分析
+
+### 按管理的Linked账号数量排序
+"""
+        
+        for i, payer_info in enumerate(payer_analysis['payer_analysis'][:10], 1):
+            payer = payer_info['payer']
+            linked_count = payer_info['linked_count']
+            support_dist = payer_info['support_level_distribution']
+            tag_dist = payer_info['tag_distribution']
+            
+            report += f"""
+### {i}. **{payer.account_name}** (ID: {payer.account_id})
+- 📊 **管理规模**: {linked_count} 个Linked账号
+- 🏷️  **Payer标签**: {payer.tags or '无'}
+- 📈 **状态**: {payer.status}
+
+#### 下属账号支持级别分布:
+"""
+            
+            if support_dist:
+                for level, count in sorted(support_dist.items(), key=lambda x: x[1], reverse=True):
+                    level_icon = {"ENTERPRISE": "🏆", "BUSINESS": "💼", "DEVELOPER": "👨‍💻", "BASIC": "📱"}.get(level, "❓")
+                    percentage = (count / linked_count) * 100 if linked_count > 0 else 0
+                    report += f"- {level_icon} **{level}**: {count} 个 ({percentage:.1f}%)\n"
+            else:
+                report += "- 无Linked账号\n"
+            
+            if tag_dist:
+                report += f"\n#### 下属账号业务标签分布:\n"
+                for tag, count in sorted(tag_dist.items(), key=lambda x: x[1], reverse=True)[:5]:
+                    percentage = (count / linked_count) * 100 if linked_count > 0 else 0
+                    report += f"- 🏷️ **{tag}**: {count} 个账号 ({percentage:.1f}%)\n"
+        
+        # 管理效率分析
+        report += f"""
+
+## 📊 管理效率分析
+
+### 负载均衡评估
+"""
+        
+        if load_dist['super_heavy'] > 0:
+            report += f"- ⚠️ **管理过载风险**: {load_dist['super_heavy']} 个Payer管理超过20个Linked账号，建议考虑分拆\n"
+        
+        if load_dist['no_linked'] > total_payers * 0.2:
+            report += f"- 💡 **资源优化机会**: {load_dist['no_linked']} 个Payer无Linked账号，可考虑整合或重新分配\n"
+        
+        optimal_payers = load_dist['light_load'] + load_dist['medium_load']
+        if optimal_payers > total_payers * 0.6:
+            report += f"- ✅ **管理结构良好**: {optimal_payers} 个Payer ({(optimal_payers/total_payers)*100:.1f}%) 处于最佳管理负载范围\n"
+        
+        # 业务集中度分析
+        report += f"""
+
+### 业务集中度分析
+"""
+        
+        # 计算基尼系数来衡量Linked账号分布的不均匀程度
+        linked_counts = [info['linked_count'] for info in payer_analysis['payer_analysis']]
+        if linked_counts:
+            gini_coefficient = _calculate_gini_coefficient(linked_counts)
+            if gini_coefficient > 0.7:
+                report += f"- 📊 **高度集中**: 基尼系数 {gini_coefficient:.2f}，少数Payer管理大部分Linked账号\n"
+            elif gini_coefficient > 0.4:
+                report += f"- 📊 **中度集中**: 基尼系数 {gini_coefficient:.2f}，管理负载分布不均\n"
+            else:
+                report += f"- 📊 **分布均匀**: 基尼系数 {gini_coefficient:.2f}，管理负载分布相对均匀\n"
+        
+        return report
+        
+    except Exception as e:
+        return f"分析客户 {customer} Payer分布失败: {str(e)}"
+
+def _calculate_gini_coefficient(values: List[int]) -> float:
+    """计算基尼系数"""
+    if not values or all(v == 0 for v in values):
+        return 0.0
+    
+    sorted_values = sorted(values)
+    n = len(sorted_values)
+    cumsum = sum(sorted_values)
+    
+    if cumsum == 0:
+        return 0.0
+    
+    # 计算基尼系数
+    gini = 0
+    for i, value in enumerate(sorted_values):
+        gini += (2 * (i + 1) - n - 1) * value
+    
+    return gini / (n * cumsum)
+
+@mcp.tool()
+def analyze_industry_insights(
+    customer: str = Field(description="客户名称 (如: 泰岳, verycloud)"),
+    date: str = Field(description="分析日期 (格式: 0731)")
+) -> str:
+    """从账号信息中分析推断行业特征和业务模式"""
+    
+    try:
+        # 加载指定日期的所有账号数据
+        accounts = load_accounts_data(customer, date)
+        industry_analysis = infer_industry_from_account_info(accounts)
+        naming_analysis = analyze_account_naming_patterns(accounts)
+        
+        # 生成行业洞察分析报告
+        report = f"""# 🏭 {customer} 行业特征与业务模式分析 ({date})
+
+## 🎯 行业特征识别
+
+### 主要行业分布
+"""
+        
+        industry_dist = industry_analysis['industry_distribution']
+        if industry_dist:
+            # 按得分排序显示行业分布
+            sorted_industries = sorted(industry_dist.items(), 
+                                     key=lambda x: x[1]['score'], reverse=True)
+            
+            for industry, data in sorted_industries[:5]:  # 显示前5个行业
+                if data['score'] > 0:
+                    industry_icons = {
+                        'technology': '💻',
+                        'finance': '💰',
+                        'healthcare': '🏥',
+                        'retail': '🛒',
+                        'media': '📺',
+                        'education': '🎓',
+                        'gaming': '🎮',
+                        'logistics': '🚚',
+                        'manufacturing': '🏭',
+                        'government': '🏛️'
+                    }
+                    icon = industry_icons.get(industry, '🏢')
+                    report += f"- {icon} **{industry.title()}**: {data['score']} 个信号 ({data['percentage']:.1f}%)\n"
+        else:
+            report += "- ❓ 无法从账号信息中识别明确的行业特征\n"
+        
+        # 行业多样性分析
+        diversity_score = industry_analysis['industry_diversity_score']
+        total_signals = industry_analysis['total_industry_signals']
+        
+        report += f"""
+
+### 行业多样性评估
+- **行业多样性得分**: {diversity_score} 个不同行业
+- **总行业信号数**: {total_signals} 个
+- **平均每账号信号**: {total_signals / len(accounts):.2f} 个
+
+"""
+        
+        if diversity_score >= 5:
+            report += "- 🌈 **高度多元化**: 业务涵盖多个行业领域，具有良好的风险分散\n"
+        elif diversity_score >= 3:
+            report += "- 🔄 **中度多元化**: 业务涉及几个主要行业，有一定的多样性\n"
+        elif diversity_score >= 1:
+            report += "- 🎯 **专业化聚焦**: 业务主要集中在特定行业领域\n"
+        else:
+            report += "- ❓ **行业特征不明**: 无法从现有信息识别明确的行业定位\n"
+        
+        # 命名模式分析
+        report += f"""
+
+## 📝 账号命名模式分析
+
+### 命名规律识别
+"""
+        
+        naming_patterns = naming_analysis['naming_patterns']
+        total_accounts = naming_analysis['total_accounts']
+        
+        pattern_descriptions = [
+            ('environment_based', '环境导向', '🌍', '基于环境的命名 (prod, dev, test)'),
+            ('region_based', '区域导向', '🗺️', '基于地理区域的命名 (us, eu, asia)'),
+            ('function_based', '功能导向', '⚙️', '基于功能的命名 (api, web, db)'),
+            ('team_based', '团队导向', '👥', '基于团队的命名 (team, dept)'),
+            ('project_based', '项目导向', '📋', '基于项目的命名 (project, app)'),
+            ('numbered', '编号系统', '🔢', '使用数字编号的账号'),
+            ('hierarchical', '层级结构', '🏗️', '使用分隔符的层级命名')
+        ]
+        
+        for pattern_key, pattern_name, icon, description in pattern_descriptions:
+            count = naming_patterns.get(pattern_key, 0)
+            if count > 0:
+                percentage = (count / total_accounts) * 100
+                report += f"- {icon} **{pattern_name}**: {count} 个账号 ({percentage:.1f}%) - {description}\n"
+        
+        # 命名一致性分析
+        consistency_score = naming_analysis['naming_consistency_score']
+        report += f"""
+
+### 命名规范化程度
+- **一致性得分**: {consistency_score:.2f} (0-1之间，越高越一致)
+
+"""
+        
+        if consistency_score >= 0.8:
+            report += "- ✅ **高度规范化**: 账号命名非常一致，管理规范良好\n"
+        elif consistency_score >= 0.6:
+            report += "- 💼 **中度规范化**: 账号命名较为一致，有一定的管理规范\n"
+        elif consistency_score >= 0.4:
+            report += "- 📱 **初步规范化**: 账号命名有一定规律，但仍有改进空间\n"
+        else:
+            report += "- ⚠️ **规范化不足**: 账号命名缺乏一致性，建议建立命名规范\n"
+        
+        # 业务模式推断
+        report += f"""
+
+## 🔍 业务模式推断
+
+### 组织架构特征
+"""
+        
+        # 基于命名模式推断组织架构
+        if naming_patterns.get('team_based', 0) > total_accounts * 0.3:
+            report += "- 👥 **团队导向型组织**: 账号按团队划分，可能采用敏捷或DevOps模式\n"
+        
+        if naming_patterns.get('environment_based', 0) > total_accounts * 0.4:
+            report += "- 🌍 **环境分离型**: 严格的开发/测试/生产环境分离，规范的软件开发流程\n"
+        
+        if naming_patterns.get('region_based', 0) > total_accounts * 0.3:
+            report += "- 🗺️ **全球化运营**: 按地理区域部署，可能是跨国或多地区业务\n"
+        
+        if naming_patterns.get('function_based', 0) > total_accounts * 0.4:
+            report += "- ⚙️ **微服务架构**: 按功能模块划分账号，可能采用微服务或SOA架构\n"
+        
+        # 技术成熟度评估
+        report += f"""
+
+### 技术成熟度评估
+"""
+        
+        tech_indicators = 0
+        if 'technology' in [item[0] for item in industry_analysis['primary_industries'][:3]]:
+            tech_indicators += 2
+        if naming_patterns.get('environment_based', 0) > 0:
+            tech_indicators += 1
+        if naming_patterns.get('function_based', 0) > 0:
+            tech_indicators += 1
+        if consistency_score > 0.6:
+            tech_indicators += 1
+        
+        if tech_indicators >= 4:
+            report += "- 🚀 **高技术成熟度**: 具备先进的技术架构和管理实践\n"
+        elif tech_indicators >= 2:
+            report += "- 💼 **中等技术成熟度**: 有一定的技术基础和规范\n"
+        else:
+            report += "- 📱 **基础技术水平**: 技术架构相对简单，有提升空间\n"
+        
+        # 示例展示
+        if naming_analysis['pattern_examples']:
+            report += f"""
+
+## 📋 命名模式示例
+
+"""
+            for pattern, examples in naming_analysis['pattern_examples'].items():
+                if examples:
+                    pattern_name = next((desc[1] for desc in pattern_descriptions if desc[0] == pattern), pattern)
+                    report += f"### {pattern_name}示例:\n"
+                    for example in examples[:3]:  # 只显示前3个示例
+                        report += f"- `{example}`\n"
+                    report += "\n"
+        
+        return report
+        
+    except Exception as e:
+        return f"分析客户 {customer} 行业特征失败: {str(e)}"
+
+# ============ 新增Overall分析工具 ============
+
+@mcp.tool()
+def analyze_comprehensive_business_insights(
+    customer: str = Field(description="客户名称 (如: 泰岳, verycloud)"),
+    date: str = Field(description="分析日期 (格式: 0731)")
+) -> str:
+    """综合分析指定客户的业务洞察，整合Payer分布、行业特征、命名模式等多维度分析"""
+    
+    try:
+        # 加载指定日期的所有账号数据
+        accounts = load_accounts_data(customer, date)
+        
+        # 执行多维度分析
+        overall_analysis = analyze_all_accounts(accounts)
+        payer_analysis = analyze_payer_distribution(accounts)
+        industry_analysis = infer_industry_from_account_info(accounts)
+        naming_analysis = analyze_account_naming_patterns(accounts)
+        
+        # 生成综合业务洞察报告
+        report = f"""# 🎯 {customer} 综合业务洞察分析报告 ({date})
+
+## 📊 执行摘要
+
+### 核心指标概览
+- **账号总规模**: {overall_analysis['total_accounts']} 个账号
+- **管理架构**: {payer_analysis['total_payers']} 个Payer管理 {payer_analysis['total_linked']} 个Linked账号
+- **支持级别分布**: Enterprise({overall_analysis['total_enterprise']}) | Business({overall_analysis['total_business']}) | Developer({overall_analysis['total_developer']}) | Basic({overall_analysis['total_basic']})
+- **行业多样性**: {industry_analysis['industry_diversity_score']} 个行业领域
+- **命名规范化**: {naming_analysis['naming_consistency_score']:.1%} 一致性得分
+
+### 🎯 关键发现
+"""
+        
+        # 生成关键发现
+        key_findings = []
+        
+        # 规模特征
+        if overall_analysis['total_accounts'] > 100:
+            key_findings.append("🏢 **大型企业级客户**: 账号规模超过100个，属于大型企业客户")
+        elif overall_analysis['total_accounts'] > 50:
+            key_findings.append("🏢 **中型企业客户**: 账号规模50-100个，属于中型企业客户")
+        else:
+            key_findings.append("🏢 **小型企业客户**: 账号规模较小，属于小型或初创企业")
+        
+        # 业务价值特征
+        enterprise_ratio = overall_analysis['total_enterprise'] / overall_analysis['total_accounts']
+        if enterprise_ratio > 0.5:
+            key_findings.append("💎 **高价值客户群体**: Enterprise账号占比超过50%，具有很高的商业价值")
+        elif enterprise_ratio > 0.2:
+            key_findings.append("💼 **中高价值客户**: Enterprise账号占比较高，具有良好的商业价值")
+        
+        # 管理效率特征
+        avg_linked_per_payer = payer_analysis['avg_linked_per_payer']
+        if avg_linked_per_payer > 10:
+            key_findings.append("⚠️ **管理复杂度较高**: 平均每个Payer管理超过10个Linked账号")
+        elif avg_linked_per_payer > 5:
+            key_findings.append("📊 **管理负载适中**: 平均每个Payer管理5-10个Linked账号")
+        else:
+            key_findings.append("✅ **管理结构精简**: 平均每个Payer管理少于5个Linked账号")
+        
+        # 行业特征
+        primary_industries = industry_analysis['primary_industries']
+        if primary_industries and primary_industries[0][1]['score'] > 0:
+            primary_industry = primary_industries[0][0]
+            key_findings.append(f"🏭 **主要行业**: {primary_industry.title()} 行业特征明显")
+        
+        # 技术成熟度
+        if naming_analysis['naming_consistency_score'] > 0.7:
+            key_findings.append("🚀 **高技术成熟度**: 命名规范化程度高，管理体系成熟")
+        
+        for finding in key_findings:
+            report += f"- {finding}\n"
+        
+        # 详细分析部分
+        report += f"""
+
+## 🏢 组织架构深度分析
+
+### Payer账号管理分布
+"""
+        
+        load_dist = payer_analysis['payer_load_distribution']
+        total_payers = payer_analysis['total_payers']
+        
+        # 管理负载可视化
+        report += f"```\n"
+        report += f"Payer负载分布:\n"
+        report += f"无Linked    │{'█' * (load_dist['no_linked'] * 20 // max(1, total_payers))}│ {load_dist['no_linked']} 个\n"
+        report += f"轻负载(1-3) │{'█' * (load_dist['light_load'] * 20 // max(1, total_payers))}│ {load_dist['light_load']} 个\n"
+        report += f"中负载(4-10)│{'█' * (load_dist['medium_load'] * 20 // max(1, total_payers))}│ {load_dist['medium_load']} 个\n"
+        report += f"重负载(11+) │{'█' * ((load_dist['heavy_load'] + load_dist['super_heavy']) * 20 // max(1, total_payers))}│ {load_dist['heavy_load'] + load_dist['super_heavy']} 个\n"
+        report += f"```\n"
+        
+        # Top 5 Payer账号
+        report += f"""
+### 🏆 Top 5 Payer账号 (按管理规模)
+"""
+        
+        for i, payer_info in enumerate(payer_analysis['payer_analysis'][:5], 1):
+            payer = payer_info['payer']
+            linked_count = payer_info['linked_count']
+            support_dist = payer_info['support_level_distribution']
+            
+            # 计算主要支持级别
+            main_support_level = "Mixed"
+            if support_dist:
+                main_support_level = max(support_dist.items(), key=lambda x: x[1])[0]
+            
+            report += f"{i}. **{payer.account_name}** - {linked_count} 个Linked账号 (主要: {main_support_level})\n"
+        
+        # 行业与业务模式分析
+        report += f"""
+
+## 🏭 行业特征与业务模式
+
+### 行业分布热力图
+"""
+        
+        if industry_analysis['industry_distribution']:
+            sorted_industries = sorted(industry_analysis['industry_distribution'].items(), 
+                                     key=lambda x: x[1]['score'], reverse=True)[:5]
+            
+            max_score = max(item[1]['score'] for item in sorted_industries) if sorted_industries else 1
+            
+            report += f"```\n"
+            for industry, data in sorted_industries:
+                if data['score'] > 0:
+                    bar_length = int((data['score'] / max_score) * 20)
+                    bar = '█' * bar_length + '░' * (20 - bar_length)
+                    report += f"{industry:12} │{bar}│ {data['score']} 信号 ({data['percentage']:.1f}%)\n"
+            report += f"```\n"
+        
+        # 命名模式分析
+        report += f"""
+
+### 命名模式特征分析
+"""
+        
+        naming_patterns = naming_analysis['naming_patterns']
+        total_accounts = naming_analysis['total_accounts']
+        
+        pattern_insights = []
+        if naming_patterns.get('environment_based', 0) > total_accounts * 0.3:
+            pattern_insights.append("🌍 **环境分离导向**: 严格的开发/测试/生产环境管理")
+        if naming_patterns.get('region_based', 0) > total_accounts * 0.2:
+            pattern_insights.append("🗺️ **地理分布式**: 多区域或全球化业务部署")
+        if naming_patterns.get('function_based', 0) > total_accounts * 0.3:
+            pattern_insights.append("⚙️ **功能模块化**: 微服务或模块化架构特征")
+        if naming_patterns.get('team_based', 0) > total_accounts * 0.2:
+            pattern_insights.append("👥 **团队协作型**: 基于团队的组织架构")
+        
+        if pattern_insights:
+            for insight in pattern_insights:
+                report += f"- {insight}\n"
+        else:
+            report += "- 📝 **自由命名模式**: 未发现明显的命名规律，可能需要建立命名规范\n"
+        
+        # 业务成熟度评估
+        report += f"""
+
+## 📈 业务成熟度综合评估
+
+### 成熟度维度评分
+"""
+        
+        # 计算各维度成熟度得分
+        scale_score = min(5, (overall_analysis['total_accounts'] // 20) + 1)  # 规模得分
+        value_score = min(5, int(enterprise_ratio * 5) + 1)  # 价值得分
+        management_score = min(5, int((1 - abs(avg_linked_per_payer - 5) / 10) * 5) + 1)  # 管理得分
+        standardization_score = min(5, int(naming_analysis['naming_consistency_score'] * 5) + 1)  # 标准化得分
+        diversity_score = min(5, industry_analysis['industry_diversity_score'])  # 多样性得分
+        
+        dimensions = [
+            ("业务规模", scale_score, "账号数量和组织规模"),
+            ("客户价值", value_score, "Enterprise客户占比"),
+            ("管理效率", management_score, "Payer/Linked管理比例"),
+            ("标准化程度", standardization_score, "命名和管理规范"),
+            ("业务多样性", diversity_score, "行业覆盖广度")
+        ]
+        
+        total_score = 0
+        for dimension, score, description in dimensions:
+            stars = "★" * score + "☆" * (5 - score)
+            report += f"- **{dimension}**: {stars} ({score}/5) - {description}\n"
+            total_score += score
+        
+        avg_score = total_score / len(dimensions)
+        report += f"\n**综合成熟度得分**: {avg_score:.1f}/5.0\n"
+        
+        if avg_score >= 4.0:
+            maturity_level = "🏆 **高度成熟**: 具备企业级管理水平和技术架构"
+        elif avg_score >= 3.0:
+            maturity_level = "💼 **中等成熟**: 有良好的基础，部分领域需要提升"
+        elif avg_score >= 2.0:
+            maturity_level = "📱 **发展阶段**: 基础设施完备，管理体系待完善"
+        else:
+            maturity_level = "🌱 **初期阶段**: 业务快速发展，管理体系需要建立"
+        
+        report += f"\n{maturity_level}\n"
+        
+        # 战略建议
+        report += f"""
+
+## 💡 战略建议与行动计划
+
+### 🎯 优先改进领域
+"""
+        
+        recommendations = []
+        
+        # 基于分析结果生成建议
+        if load_dist['super_heavy'] > 0:
+            recommendations.append("⚠️ **管理负载优化**: 考虑分拆管理超过20个Linked账号的Payer，降低管理复杂度")
+        
+        if enterprise_ratio < 0.3 and overall_analysis['total_business'] > 0:
+            recommendations.append("📈 **客户价值提升**: 重点培育Business客户升级为Enterprise，提高整体价值")
+        
+        if naming_analysis['naming_consistency_score'] < 0.6:
+            recommendations.append("📝 **标准化建设**: 建立统一的账号命名规范，提高管理效率")
+        
+        if industry_analysis['industry_diversity_score'] < 2:
+            recommendations.append("🌈 **业务多元化**: 考虑拓展更多行业领域，降低业务风险")
+        
+        if overall_analysis['total_developer'] > overall_analysis['total_enterprise']:
+            recommendations.append("🚀 **开发者生态**: 建立完善的开发者支持体系，促进技术创新")
+        
+        if not recommendations:
+            recommendations.append("✅ **持续优化**: 当前业务结构良好，建议保持现有策略并持续监控")
+        
+        for rec in recommendations:
+            report += f"- {rec}\n"
+        
+        # 监控指标建议
+        report += f"""
+
+### 📊 关键监控指标
+- **规模增长率**: 月度账号总数变化
+- **价值提升率**: Enterprise客户占比变化
+- **管理效率**: 平均每Payer管理的Linked账号数
+- **标准化进度**: 命名规范化得分变化
+- **业务健康度**: 各支持级别分布均衡性
+
+### 🔄 定期评估建议
+- **月度**: 账号数量和分布变化
+- **季度**: 业务价值和管理效率评估
+- **年度**: 综合成熟度和战略调整评估
+"""
+        
+        return report
+        
+    except Exception as e:
+        return f"综合业务洞察分析失败: {str(e)}"
+
+# ============ 新增Overall分析工具 ============
+
+@mcp.tool()
+def analyze_partner_overall_business(
+    customer: str = Field(description="客户名称 (如: customer1, customer2)"),
+    date: str = Field(description="分析日期 (格式: 0731)")
+) -> str:
+    """分析指定客户的整体业务情况，包括所有支持级别的账号"""
+    
+    try:
+        # 加载指定日期的所有账号数据
+        accounts = load_accounts_data(customer, date)
+        analysis = analyze_all_accounts(accounts)
+        
+        # 生成详细的整体业务分析报告
+        report = f"""# 🏢 {customer} 整体业务分析报告 ({date})
+
+## 📊 总体规模概览
+- **账号总数**: {analysis['total_accounts']} 个
+- **Payer账号**: {analysis['total_payers']} 个 ({analysis['total_payers']/analysis['total_accounts']*100:.1f}%)
+- **Linked账号**: {analysis['total_linked']} 个 ({analysis['total_linked']/analysis['total_accounts']*100:.1f}%)
+
+## 🎯 支持级别分布
+"""
+        
+        # 支持级别统计
+        support_levels = [
+            ("Enterprise", analysis['total_enterprise'], "🏆"),
+            ("Business", analysis['total_business'], "💼"),
+            ("Developer", analysis['total_developer'], "👨‍💻"),
+            ("Basic", analysis['total_basic'], "📱"),
+            ("Other", analysis['total_other'], "❓")
+        ]
+        
+        for level_name, count, icon in support_levels:
+            if count > 0:
+                percentage = count / analysis['total_accounts'] * 100
+                report += f"- {icon} **{level_name}**: {count} 个账号 ({percentage:.1f}%)\n"
+        
+        # 业务价值分析
+        report += f"""
+
+## 💰 业务价值分析
+- **高价值客户** (Enterprise): {analysis['total_enterprise']} 个 ({analysis['total_enterprise']/analysis['total_accounts']*100:.1f}%)
+- **中价值客户** (Business): {analysis['total_business']} 个 ({analysis['total_business']/analysis['total_accounts']*100:.1f}%)
+- **开发者客户** (Developer): {analysis['total_developer']} 个 ({analysis['total_developer']/analysis['total_accounts']*100:.1f}%)
+- **基础客户** (Basic): {analysis['total_basic']} 个 ({analysis['total_basic']/analysis['total_accounts']*100:.1f}%)
+
+### 客户结构特征
+"""
+        
+        # 分析客户结构特征
+        if analysis['total_enterprise'] > analysis['total_accounts'] * 0.3:
+            report += "- 🏆 **企业级主导型**: Enterprise客户占比较高，属于高价值客户群体\n"
+        elif analysis['total_business'] > analysis['total_accounts'] * 0.4:
+            report += "- 💼 **商业级主导型**: Business客户为主体，具有良好的商业价值\n"
+        elif analysis['total_developer'] > analysis['total_accounts'] * 0.5:
+            report += "- 👨‍💻 **开发者主导型**: Developer客户占主导，具有技术创新潜力\n"
+        else:
+            report += "- 📊 **混合型结构**: 各支持级别分布相对均衡\n"
+        
+        # 账号状态分析
+        report += f"""
+
+## 📈 账号状态分析
+"""
+        
+        for status, count in sorted(analysis['status_stats'].items(), key=lambda x: x[1], reverse=True):
+            if count > 0:
+                percentage = count / analysis['total_accounts'] * 100
+                status_icon = "✅" if status.lower() == "active" else "⚠️" if status.lower() in ["suspended", "pending"] else "❓"
+                report += f"- {status_icon} **{status}**: {count} 个账号 ({percentage:.1f}%)\n"
+        
+        return report
+        
+    except Exception as e:
+        return f"分析客户 {customer} 整体业务情况失败: {str(e)}"
+
+@mcp.tool()
+def compare_partner_overall_changes(
+    customer: str = Field(description="客户名称 (如: customer1, customer2)"),
+    date1: str = Field(description="第一个日期 (格式: 0723)"),
+    date2: str = Field(description="第二个日期 (格式: 0724)")
+) -> str:
+    """比较指定客户两个日期之间的整体业务变化（包括所有支持级别）"""
+    
+    try:
+        # 加载两个日期的所有账号数据
+        accounts1 = load_accounts_data(customer, date1)
+        accounts2 = load_accounts_data(customer, date2)
+        
+        # 分析数据
+        analysis1 = analyze_all_accounts(accounts1)
+        analysis2 = analyze_all_accounts(accounts2)
+        
+        # 生成对比报告
+        report = f"""# 🔄 {customer} 整体业务变化分析 ({date1} → {date2})
+
+## 📊 总体变化概览
+- **账号总数**: {analysis1['total_accounts']} → {analysis2['total_accounts']} ({analysis2['total_accounts'] - analysis1['total_accounts']:+d})
+- **Payer账号**: {analysis1['total_payers']} → {analysis2['total_payers']} ({analysis2['total_payers'] - analysis1['total_payers']:+d})
+- **Linked账号**: {analysis1['total_linked']} → {analysis2['total_linked']} ({analysis2['total_linked'] - analysis1['total_linked']:+d})
+
+## 🎯 支持级别变化分析
+"""
+        
+        # 支持级别变化对比
+        support_changes = [
+            ("Enterprise", analysis1['total_enterprise'], analysis2['total_enterprise'], "🏆"),
+            ("Business", analysis1['total_business'], analysis2['total_business'], "💼"),
+            ("Developer", analysis1['total_developer'], analysis2['total_developer'], "👨‍💻"),
+            ("Basic", analysis1['total_basic'], analysis2['total_basic'], "📱"),
+            ("Other", analysis1['total_other'], analysis2['total_other'], "❓")
+        ]
+        
+        for level_name, count1, count2, icon in support_changes:
+            change = count2 - count1
+            if change != 0 or count2 > 0:  # 只显示有变化或有数量的级别
+                change_str = f"({change:+d})" if change != 0 else ""
+                report += f"- {icon} **{level_name}**: {count1} → {count2} {change_str}\n"
+        
+        # 业务价值变化分析
+        report += f"""
+
+## 💰 业务价值变化分析
+
+### 高价值客户变化 (Enterprise)
+"""
+        
+        enterprise_change = analysis2['total_enterprise'] - analysis1['total_enterprise']
+        if enterprise_change > 0:
+            report += f"- 📈 **增长**: 新增 {enterprise_change} 个Enterprise客户，业务价值提升\n"
+        elif enterprise_change < 0:
+            report += f"- 📉 **下降**: 减少 {abs(enterprise_change)} 个Enterprise客户，需要关注客户流失\n"
+        else:
+            report += f"- ➡️ **稳定**: Enterprise客户数量保持稳定\n"
+        
+        # 整体趋势分析
+        total_change = analysis2['total_accounts'] - analysis1['total_accounts']
+        report += f"""
+
+## 📈 整体业务趋势分析
+
+### 规模变化趋势
+"""
+        
+        if total_change > 0:
+            growth_rate = (total_change / analysis1['total_accounts']) * 100
+            report += f"- 📈 **业务增长**: 总账号数增加 {total_change} 个，增长率 {growth_rate:.1f}%\n"
+            
+            # 分析增长的主要来源
+            max_growth_level = max(support_changes[:-1], key=lambda x: x[2] - x[1])  # 排除Other
+            if max_growth_level[2] - max_growth_level[1] > 0:
+                report += f"- 🎯 **主要增长来源**: {max_growth_level[3]} {max_growth_level[0]} 级别贡献最大\n"
+                
+        elif total_change < 0:
+            decline_rate = (abs(total_change) / analysis1['total_accounts']) * 100
+            report += f"- 📉 **业务收缩**: 总账号数减少 {abs(total_change)} 个，下降率 {decline_rate:.1f}%\n"
+            
+            # 分析下降的主要原因
+            max_decline_level = min(support_changes[:-1], key=lambda x: x[2] - x[1])  # 排除Other
+            if max_decline_level[2] - max_decline_level[1] < 0:
+                report += f"- ⚠️ **主要下降来源**: {max_decline_level[3]} {max_decline_level[0]} 级别下降最多\n"
+        else:
+            report += f"- ➡️ **业务稳定**: 总账号数保持不变\n"
+        
+        return report
+        
+    except Exception as e:
+        return f"比较客户 {customer} 整体业务变化失败: {str(e)}"
+
+@mcp.tool()
+def analyze_partner_business_segments(
+    customer: str = Field(description="客户名称 (如: customer1, customer2)"),
+    date: str = Field(description="分析日期 (格式: 0731)")
+) -> str:
+    """分析指定客户的业务细分情况，通过账号标签和命名模式识别业务线"""
+    
+    try:
+        # 加载指定日期的所有账号数据
+        accounts = load_accounts_data(customer, date)
+        analysis = analyze_all_accounts(accounts)
+        
+        # 分析业务细分
+        report = f"""# 🏗️ {customer} 业务细分分析报告 ({date})
+
+## 📊 业务线识别 (基于账号标签)
+"""
+        
+        # 标签分析
+        tag_analysis = {}
+        tagged_accounts = 0
+        
+        for account in accounts:
+            if account.tags:
+                tagged_accounts += 1
+                # 分割标签（可能有多个标签用分号或逗号分隔）
+                tags = [tag.strip() for tag in account.tags.replace(';', ',').split(',') if tag.strip()]
+                for tag in tags:
+                    if tag not in tag_analysis:
+                        tag_analysis[tag] = {
+                            'total': 0,
+                            'enterprise': 0,
+                            'business': 0,
+                            'developer': 0,
+                            'basic': 0,
+                            'payer': 0,
+                            'linked': 0
+                        }
+                    
+                    tag_analysis[tag]['total'] += 1
+                    if account.is_enterprise():
+                        tag_analysis[tag]['enterprise'] += 1
+                    elif account.is_business():
+                        tag_analysis[tag]['business'] += 1
+                    elif account.is_developer():
+                        tag_analysis[tag]['developer'] += 1
+                    elif account.is_basic():
+                        tag_analysis[tag]['basic'] += 1
+                    
+                    if account.is_payer():
+                        tag_analysis[tag]['payer'] += 1
+                    elif account.is_linked():
+                        tag_analysis[tag]['linked'] += 1
+        
+        if tag_analysis:
+            # 按账号数量排序显示业务线
+            sorted_tags = sorted(tag_analysis.items(), key=lambda x: x[1]['total'], reverse=True)
+            
+            for i, (tag, stats) in enumerate(sorted_tags[:10], 1):  # 显示前10个业务线
+                percentage = stats['total'] / analysis['total_accounts'] * 100
+                report += f"""
+### {i}. 🏷️ **{tag}** ({stats['total']} 个账号, {percentage:.1f}%)
+- 支持级别分布: Enterprise({stats['enterprise']}) | Business({stats['business']}) | Developer({stats['developer']}) | Basic({stats['basic']})
+- 账号类型分布: Payer({stats['payer']}) | Linked({stats['linked']})
+"""
+                
+                # 业务线特征分析
+                if stats['enterprise'] > stats['total'] * 0.5:
+                    report += "- 💎 **高价值业务线**: Enterprise客户占主导\n"
+                elif stats['developer'] > stats['total'] * 0.5:
+                    report += "- 🚀 **创新业务线**: Developer客户为主，具有技术创新特征\n"
+                elif stats['payer'] > stats['linked']:
+                    report += "- 🏢 **独立业务线**: Payer账号较多，业务相对独立\n"
+                else:
+                    report += "- 🔗 **集成业务线**: Linked账号较多，业务高度集成\n"
+        else:
+            report += "- ❌ **无标签数据**: 当前没有账号使用标签，无法进行业务线分析\n"
+        
+        # 业务成熟度分析
+        report += f"""
+
+## 📈 业务成熟度评估
+
+### 标签使用情况
+- 有标签账号: {tagged_accounts} 个 ({tagged_accounts/analysis['total_accounts']*100:.1f}%)
+- 无标签账号: {analysis['total_accounts'] - tagged_accounts} 个
+
+### 管理规范化程度
+"""
+        
+        if tagged_accounts / analysis['total_accounts'] > 0.8:
+            report += "- 🏆 **高度规范化**: 标签使用率超过80%，管理非常规范\n"
+        elif tagged_accounts / analysis['total_accounts'] > 0.5:
+            report += "- 💼 **中度规范化**: 标签使用率超过50%，管理较为规范\n"
+        elif tagged_accounts / analysis['total_accounts'] > 0.2:
+            report += "- 📱 **初步规范化**: 标签使用率超过20%，开始建立管理规范\n"
+        else:
+            report += "- ⚠️ **规范化不足**: 标签使用率较低，建议加强账号管理规范\n"
+        
+        # 业务多样性分析
+        unique_tags = len(tag_analysis)
+        if unique_tags > 0:
+            diversity_ratio = unique_tags / analysis['total_accounts']
+            if diversity_ratio > 0.3:
+                report += "- 🌈 **高业务多样性**: 业务线丰富，涵盖多个领域\n"
+            elif diversity_ratio > 0.1:
+                report += "- 🔄 **中等业务多样性**: 有一定的业务多样性\n"
+            else:
+                report += "- 🎯 **专注型业务**: 业务相对集中，专注特定领域\n"
+        
+        return report
+        
+    except Exception as e:
+        return f"分析客户 {customer} 业务细分情况失败: {str(e)}"
+
+@mcp.prompt("overall-business-analysis")
+def overall_business_analysis_prompt() -> str:
+    """Overall业务分析模板"""
+    return """# Partner Overall业务分析模板
+
+## 分析目标
+全面分析指定partner的整体业务情况，不局限于Enterprise级别，了解完整的业务图景和发展趋势。
+
+## 分析维度
+
+### 1. 整体规模分析
+- 使用 `analyze_partner_overall_business(customer, date)` 获取整体业务概览
+- 分析所有支持级别的账号分布
+- 评估业务规模和客户结构
+
+### 2. 支持级别分析
+- **Enterprise客户**: 高价值客户，重点关注
+- **Business客户**: 中等价值，具有增长潜力
+- **Developer客户**: 技术创新型，未来价值
+- **Basic客户**: 基础客户，规模效应
+
+### 3. 业务变化趋势
+- 使用 `compare_partner_overall_changes(customer, date1, date2)` 分析变化
+- 识别增长最快的支持级别
+- 分析业务发展方向和策略调整
+
+### 4. 业务细分分析
+- 使用 `analyze_partner_business_segments(customer, date)` 识别业务线
+- 通过账号标签分析业务多样性
+- 评估管理规范化程度
+
+## 分析流程
+
+### 第一步: 基础数据收集
+```
+customer = "目标客户"
+latest_date = "最新日期"
+previous_date = "对比日期"
+
+# 获取整体业务概览
+overall_analysis = analyze_partner_overall_business(customer, latest_date)
+```
+
+### 第二步: 变化趋势分析
+```
+# 分析业务变化趋势
+change_analysis = compare_partner_overall_changes(customer, previous_date, latest_date)
+```
+
+### 第三步: 业务细分分析
+```
+# 分析业务线和细分市场
+segment_analysis = analyze_partner_business_segments(customer, latest_date)
+```
+
+## 关键分析指标
+
+### 业务价值指标
+- **高价值客户占比**: Enterprise账号 / 总账号数
+- **成长性指标**: Developer + Business账号增长率
+- **规模指标**: 总账号数和Payer/Linked比例
+
+### 业务健康度指标
+- **多样性指数**: 不同支持级别的分布均衡度
+- **管理成熟度**: 标签使用率和命名规范程度
+- **增长稳定性**: 各级别账号的变化趋势
+
+## 输出格式
+
+### 1. 执行摘要
+- 业务规模和结构特征
+- 主要发现和关键趋势
+- 战略建议和行动计划
+
+### 2. 详细分析报告
+- 各支持级别详细分析
+- 业务线识别和特征
+- 变化趋势和驱动因素
+
+### 3. 业务优化建议
+- 基于数据的改进建议
+- 业务发展机会识别
+- 管理效率提升方案
+
+### 4. 可视化图表
+- 支持级别分布饼图
+- 业务变化趋势图
+- 市场地位对比图
+
+## 应用场景
+
+### 业务发展规划
+- 评估当前业务结构合理性
+- 识别增长机会和潜在风险
+- 制定差异化发展策略
+
+### 客户关系管理
+- 优化客户分层管理策略
+- 提升高价值客户服务质量
+- 挖掘潜在客户升级机会
+
+### 业务运营优化
+- 识别业务线发展机会
+- 优化资源配置和管理效率
+- 制定针对性的业务策略
+
+## 质量检查清单
+- [ ] 数据完整性和准确性
+- [ ] 分析逻辑的合理性
+- [ ] 结论的客观性和可操作性
+- [ ] 建议的具体性和可执行性
+- [ ] 图表的清晰性和易读性
+
+## 后续行动
+- 定期更新分析报告
+- 跟踪关键指标变化
+- 实施改进措施
+- 评估效果和调整策略
+"""
 
 @mcp.resource("customer-data://{customer}")
 def get_customer_data_resource(customer: str) -> str:
@@ -941,7 +2196,7 @@ def get_customer_data_resource(customer: str) -> str:
             return f"客户 {customer} 没有可用数据"
         
         latest_date = dates[-1]
-        accounts = load_accounts_data(customer, latest_date)
+        accounts = load_enterprise_accounts_data(customer, latest_date)  # 使用Enterprise专用函数
         analysis = analyze_enterprise_accounts(accounts)
         
         resource_data = f"""# 客户数据资源: {customer}
@@ -973,7 +2228,7 @@ def get_customer_data_resource(customer: str) -> str:
 def get_account_data_resource(customer: str, date: str) -> str:
     """获取特定客户特定日期的原始账号数据资源"""
     try:
-        accounts = load_accounts_data(customer, date)
+        accounts = load_enterprise_accounts_data(customer, date)  # 使用Enterprise专用函数
         analysis = analyze_enterprise_accounts(accounts)
         
         resource_data = f"""# 账号数据资源: {customer} - {date}
@@ -1020,14 +2275,14 @@ def get_customer_summary_resource(customer: str) -> str:
             return f"客户 {customer} 没有可用数据"
         
         latest_date = dates[-1]
-        accounts = load_accounts_data(customer, latest_date)
+        accounts = load_enterprise_accounts_data(customer, latest_date)  # 使用Enterprise专用函数
         analysis = analyze_enterprise_accounts(accounts)
         
         # 如果有多个日期，计算变化趋势
         trend_info = ""
         if len(dates) >= 2:
             prev_date = dates[-2]
-            prev_accounts = load_accounts_data(customer, prev_date)
+            prev_accounts = load_enterprise_accounts_data(customer, prev_date)  # 使用Enterprise专用函数
             prev_analysis = analyze_enterprise_accounts(prev_accounts)
             
             payer_change = analysis['total_payers'] - prev_analysis['total_payers']
@@ -1091,7 +2346,6 @@ def analyze_trends_prompt() -> str:
 ## 分析步骤
 
 ### 1. 数据收集
-- 使用 `get_available_customers()` 获取可用客户列表
 - 使用 `get_available_dates_tool(customer)` 获取指定客户的所有可用数据日期
 - 选择合适的时间范围进行分析
 
@@ -1233,19 +2487,19 @@ def multi_customer_report_prompt() -> str:
 
 ### 1. 数据收集
 ```
-# 获取所有客户
-customers = get_available_customers()
+# 手动指定需要对比的客户列表
+customers = ["customer1", "customer2", "customer3"]
 
 # 为每个客户收集基础数据
 for customer in customers:
     dates = get_available_dates_tool(customer)
-    latest_summary = simple_payer_summary(customer, dates[-2], dates[-1])
+    latest_summary = compare_payer_changes(customer, dates[-2], dates[-1])
     customer_data = get_customer_data_resource(customer)
 ```
 
 ### 2. 横向对比分析
-- 使用 `compare_customers()` 进行客户间对比
-- 使用 `get_all_customers_summary()` 获取整体概览
+- 手动收集各客户的基础数据进行对比
+- 分析各客户的账号管理模式差异
 
 ### 3. 深度案例分析
 - 选择代表性客户进行详细分析
@@ -1285,7 +2539,7 @@ for customer in customers:
 
 def main():
     """运行MCP服务器"""
-    print("🚀 启动 Account Analyzer MCP服务器 (多客户版本)...")
+    print("🚀 启动 Account Analyzer MCP服务器 (深度分析增强版)...")
     print(f"📁 数据根目录: {DATA_ROOT_DIR}")
     
     # 检查数据目录
@@ -1300,9 +2554,26 @@ def main():
         print(f"⚠️  数据根目录不存在: {DATA_ROOT_DIR}")
     
     print("🔧 支持的功能:")
-    print("   📋 Tools: 多客户分析工具")
+    print("   📋 Tools: Enterprise分析 + Overall业务分析 + 深度业务洞察工具")
     print("   📦 Resources: 按客户分组的数据资源")
-    print("   📝 Prompts: 多客户分析和报告模板")
+    print("   📝 Prompts: 分析和报告模板")
+    print()
+    print("🆕 新增深度业务洞察功能:")
+    print("   🏢 analyze_payer_detailed_distribution: Payer账号深度分布分析")
+    print("   🏭 analyze_industry_insights: 行业特征和业务模式推断")
+    print("   🎯 analyze_comprehensive_business_insights: 综合业务洞察分析")
+    print()
+    print("🌐 Overall业务分析功能:")
+    print("   🌐 analyze_partner_overall_business: 整体业务分析")
+    print("   🔄 compare_partner_overall_changes: 业务变化对比")
+    print("   🏗️ analyze_partner_business_segments: 业务细分分析")
+    print()
+    print("📊 分析能力:")
+    print("   • Payer负载分布和管理效率分析")
+    print("   • 基于关键词的行业特征智能识别")
+    print("   • 账号命名模式和规范化程度评估")
+    print("   • 多维度业务成熟度评分")
+    print("   • 战略建议和监控指标推荐")
     print()
     
     mcp.run()
