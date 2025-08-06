@@ -5,5 +5,5 @@ Partner Case Analyzer MCP Server
 """
 
 __version__ = "1.0.0"
-__author__ = "MCP Demo Team"
+__author__ = "zhili"
 __description__ = "工单分析MCP服务器"

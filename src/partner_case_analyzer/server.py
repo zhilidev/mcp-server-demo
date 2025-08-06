@@ -1,200 +1,121 @@
 #!/usr/bin/env python3
 """
-Case Analyzer MCP Server - 工单分析服务器
+Case Analyzer MCP Server - 工单分析服务器（优化版）
 
-这个服务器分析工单情况，支持按Category、Account PayerId、Service等维度进行统计分析。
-支持Tools、Resources和Prompts三种MCP类型。
+专注于核心工单分析功能，去除冗余代码。
 """
 
 import csv
 import os
 import re
 from collections import defaultdict, Counter
-from datetime import datetime
-from typing import Dict, List, Set, Tuple, Optional
+from typing import Dict, List
 from mcp.server.fastmcp import FastMCP
 from pydantic import Field
 
-# 尝试导入pandas用于Excel处理
-try:
-    import pandas as pd
-    PANDAS_AVAILABLE = True
-except ImportError:
-    PANDAS_AVAILABLE = False
-    print("警告: pandas未安装，客户名称映射功能将不可用")
-
-# 数据根目录路径 - 从环境变量获取，避免硬编码敏感路径
+# 数据根目录路径 - 从环境变量获取
 DATA_ROOT_DIR = os.getenv('CASE_DATA_DIR', os.path.expanduser('~/case-data'))
 
 # 客户映射表路径
-CUSTOMER_MAPPING_FILE = os.getenv('CUSTOMER_MAPPING_FILE', '/path/to/customer/mapping.xlsx')
+CUSTOMER_MAPPING_FILE = os.getenv('CUSTOMER_MAPPING_FILE', os.path.expanduser('~/case-data/customer-mapping.csv'))
+
+# 启动时打印环境变量调试信息
+print("=== MCP服务器启动 - 环境变量调试 ===")
+print(f"CASE_DATA_DIR: {DATA_ROOT_DIR}")
+print(f"CUSTOMER_MAPPING_FILE: {CUSTOMER_MAPPING_FILE}")
+print(f"CASE_DATA_DIR exists: {os.path.exists(DATA_ROOT_DIR)}")
+print(f"CUSTOMER_MAPPING_FILE exists: {os.path.exists(CUSTOMER_MAPPING_FILE)}")
+print("=" * 50)
 
 def load_customer_mapping():
-    """
-    加载客户名称映射表
+    """加载客户名称映射表 - 增强版，支持CSV和XLSX格式"""
+    mapping = {}
     
-    Returns:
-        Dict: PayerID -> 客户名称的映射字典
-    """
-    if not PANDAS_AVAILABLE:
-        return {}
-        
-    try:
-        if os.path.exists(CUSTOMER_MAPPING_FILE):
-            df = pd.read_excel(CUSTOMER_MAPPING_FILE)
+    print(f"尝试加载客户映射文件: {CUSTOMER_MAPPING_FILE}")
+    
+    if os.path.exists(CUSTOMER_MAPPING_FILE):
+        try:
+            file_ext = os.path.splitext(CUSTOMER_MAPPING_FILE)[1].lower()
             
-            # 创建映射字典
-            mapping = {}
-            for _, row in df.iterrows():
-                # 使用Payer列而不是PayerID列
-                payer_id = str(int(row['Payer'])) if pd.notna(row['Payer']) else None
-                customer_name = row['客户'] if pd.notna(row['客户']) else None
-                
-                if payer_id and customer_name:
-                    # 清理客户名称中的换行符和多余空格
-                    customer_name = customer_name.replace('\n', '/').strip()
-                    mapping[payer_id] = customer_name
+            if file_ext == '.xlsx':
+                # 处理XLSX文件
+                try:
+                    import pandas as pd
+                    df = pd.read_excel(CUSTOMER_MAPPING_FILE)
+                    headers = df.columns.tolist()
+                    print(f"XLSX文件头部: {headers}")
+                    
+                    for _, row in df.iterrows():
+                        # 尝试多种可能的列名
+                        payer_id = None
+                        customer_name = None
+                        
+                        # 查找Payer ID列
+                        for payer_col in ['Payer', 'PayerID', 'Account PayerId', 'payer_id', 'account_id']:
+                            if payer_col in row and pd.notna(row[payer_col]):
+                                try:
+                                    payer_id = str(int(float(row[payer_col])))
+                                    break
+                                except (ValueError, TypeError):
+                                    payer_id = str(row[payer_col]).strip()
+                                    break
+                        
+                        # 查找客户名称列
+                        for customer_col in ['客户', 'Customer', 'customer_name', '客户名称', 'CustomerName']:
+                            if customer_col in row and pd.notna(row[customer_col]):
+                                customer_name = str(row[customer_col]).strip().replace('\n', '/').replace('\r', '')
+                                break
+                        
+                        if payer_id and customer_name:
+                            mapping[payer_id] = customer_name
+                            print(f"映射添加: {payer_id} -> {customer_name}")
+                            
+                except ImportError:
+                    print("警告: 需要安装pandas库来支持XLSX格式，回退到CSV格式处理")
+                    return mapping
+                    
+            else:
+                # 处理CSV文件
+                with open(CUSTOMER_MAPPING_FILE, 'r', encoding='utf-8-sig') as f:
+                    reader = csv.DictReader(f)
+                    headers = reader.fieldnames
+                    print(f"CSV文件头部: {headers}")
+                    
+                    for row_num, row in enumerate(reader, 1):
+                        # 尝试多种可能的列名
+                        payer_id = None
+                        customer_name = None
+                        
+                        # 查找Payer ID列
+                        for payer_col in ['Payer', 'PayerID', 'Account PayerId', 'payer_id', 'account_id']:
+                            if payer_col in row and row[payer_col] and row[payer_col].strip():
+                                try:
+                                    payer_id = str(int(float(row[payer_col])))
+                                    break
+                                except (ValueError, TypeError):
+                                    payer_id = str(row[payer_col]).strip()
+                                    break
+                        
+                        # 查找客户名称列
+                        for customer_col in ['客户', 'Customer', 'customer_name', '客户名称', 'CustomerName']:
+                            if customer_col in row and row[customer_col] and row[customer_col].strip():
+                                customer_name = row[customer_col].strip().replace('\n', '/').replace('\r', '')
+                                break
+                        
+                        if payer_id and customer_name:
+                            mapping[payer_id] = customer_name
+                            print(f"映射添加: {payer_id} -> {customer_name}")
             
             print(f"成功加载客户映射表，包含 {len(mapping)} 个映射关系")
-            return mapping
-        else:
-            print(f"客户映射文件不存在: {CUSTOMER_MAPPING_FILE}")
-            return {}
-    except Exception as e:
-        print(f"加载客户映射表时出错: {e}")
-        return {}
-
-def format_customer_display(payer_id, customer_mapping=None):
-    """
-    格式化客户显示名称
-    
-    Args:
-        payer_id: 付费账户ID
-        customer_mapping: 客户映射字典
-        
-    Returns:
-        格式化的显示名称
-    """
-    if customer_mapping and payer_id in customer_mapping:
-        customer_name = customer_mapping[payer_id]
-        return f"客户: {customer_name}，账户ID: {payer_id}"
+        except Exception as e:
+            print(f"加载客户映射表时出错: {e}")
     else:
-        return f"账户ID: {payer_id}"
-
-# 创建FastMCP服务器实例
-mcp = FastMCP(
-    "case-analyzer",
-    instructions="""
-    # 工单分析服务器 - 专业的技术支持工单数据分析工具
-
-    这个服务器专门用于分析技术支持工单数据，支持按月份、类别、付费账户、服务等多个维度进行深度分析。
-
-    ## 🎯 核心能力
-
-    当用户询问以下内容时，应该使用此服务器：
-    - **工单相关问题**: "工单情况"、"工单分析"、"工单统计"、"case分析"
-    - **月份分析**: "7月份工单"、"202507工单"、"某月工单情况"
-    - **类别分析**: "工单类别分布"、"技术支持工单"、"账单工单"
-    - **账户分析**: "付费账户工单"、"payer工单分布"、"账户支持情况"
-    - **服务分析**: "服务工单"、"服务问题分析"、"哪个服务工单最多"
-    - **General Guidance**: "指导类工单"、"General Guidance统计"
-    - **综合报告**: "工单报告"、"综合分析"、"整体情况"
-    - **美化表格**: "所有付费账户工单详细情况"、"详细表格"、"美化表格"
-
-    ## 🛠️ 可用工具 (Tools)
-
-    ### 智能分析工具
-    - `analyze_monthly_cases`: 智能分析工具，自动从用户查询中提取月份和表格需求
-      - 支持自然语言查询如"2025年7月份所有付费账户工单详细情况"
-      - 自动识别是否需要美化表格展示
-      - 自动提取月份信息并选择合适的分析方式
-
-    ### 基础查询工具
-    - `get_available_months_tool`: 获取数据目录下所有可用的月份列表
+        print(f"客户映射文件不存在: {CUSTOMER_MAPPING_FILE}")
     
-    ### 核心分析工具 (所有工具都支持按月份筛选)
-    - `analyze_cases_by_category`: 按工单类别(Technical support、Account billing等)统计分析
-    - `analyze_cases_by_payer`: 按付费账户ID分析工单分布和技术支持比例
-    - `analyze_cases_by_service`: 按服务分析工单数量和类型
-    - `analyze_general_guidance_cases`: 专门统计General Guidance类型的工单
-    - `get_comprehensive_case_analysis`: 生成包含所有维度的综合分析报告
-
-    ### 表格展示工具
-    - `get_payer_accounts_beautiful_table`: 生成美化的markdown表格，专门用于"所有付费账户工单详细情况"类查询
-    - `analyze_payer_accounts_table`: 以表格形式展示付费账户工单分布分析
-
-    ## 📊 典型使用场景
-
-    **美化表格场景** (推荐使用 analyze_monthly_cases):
-    - "2025年7月份所有付费账户工单详细情况" → 自动使用美化表格展示
-    - "所有付费账户工单详细表格" → 自动使用美化表格展示
-    - "客户工单详细情况" → 自动使用美化表格展示
-
-    **月份分析场景**:
-    - "7月份工单情况" → 使用 analyze_monthly_cases(query)
-    - "2025年7月的工单分析" → 使用 analyze_monthly_cases(query)
-    
-    **类别分析场景**:
-    - "工单类别分布" → 使用 analyze_cases_by_category(data_dir)
-    - "技术支持工单占比" → 使用 analyze_cases_by_category(data_dir)
-    
-    **账户分析场景**:
-    - "哪个账户工单最多" → 使用 analyze_cases_by_payer(data_dir)
-    - "付费账户支持情况" → 使用 analyze_cases_by_payer(data_dir)
-    
-    **服务分析场景**:
-    - "服务工单分布" → 使用 analyze_cases_by_service(data_dir)
-    - "哪个服务问题最多" → 使用 analyze_cases_by_service(data_dir)
-
-    ## 🎨 表格格式说明
-
-    ### 美化表格格式 (get_payer_accounts_beautiful_table)
-    返回标准的markdown表格格式：
-    ```
-    ## 202507月份所有付费账户工单详细情况
-
-    | 客户名称 | 账户ID | 总工单数 | 技术支持 | 非技术支持 | 技术占比 |
-    |----------|--------|----------|----------|------------|----------|
-    | 客户A    | 123456 | 15       | 12       | 3          | 80.0%    |
-    | 客户B    | 789012 | 8        | 5        | 3          | 62.5%    |
-    ```
-
-    包含统计摘要、数据来源等完整信息，适合直接展示给用户。
-
-    ## 🔧 参数说明
-
-    - `data_dir`: 工单数据目录路径 (通过环境变量CASE_DATA_DIR设置)
-    - `month`: 可选月份参数，支持格式:
-      - 空字符串 "" = 分析所有月份
-      - "202507" = 分析2025年7月
-      - "2025-07" = 分析2025年7月
-    - `query`: 用户的自然语言查询文本，用于智能分析工具
-
-    ## 📁 数据文件格式
-
-    支持标准的工单CSV文件，文件名格式: cases-YYYYMM.csv
-    必需字段: Case ID, Category (C), Account PayerId, Type (T), Item (I), Resolver, Subject等
-
-    ## 🎯 智能识别关键词
-
-    以下关键词应该触发使用此服务器:
-    工单、case、支持、support、技术支持、账单、billing、服务、payer、付费账户、
-    General Guidance、月份分析、类别分布、服务分析、综合报告、统计分析、
-    详细情况、详细表格、美化表格、所有付费账户工单详细情况
-    """
-)
+    return mapping
 
 def load_case_data(data_dir: str, month: str = "") -> List[Dict]:
-    """
-    加载指定目录下的工单CSV文件
-    
-    Args:
-        data_dir: 数据目录路径
-        month: 可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空加载所有文件
-        
-    Returns:
-        包含工单数据的列表
-    """
+    """加载指定目录下的工单CSV文件"""
     all_cases = []
     
     if not os.path.exists(data_dir):
@@ -219,8 +140,6 @@ def load_case_data(data_dir: str, month: str = "") -> List[Dict]:
                         all_cases.append(row)
             except Exception as e:
                 print(f"Error reading {target_filename}: {e}")
-        else:
-            print(f"File not found: {target_filename}")
     else:
         # 查找所有符合格式的CSV文件
         for filename in os.listdir(data_dir):
@@ -230,7 +149,6 @@ def load_case_data(data_dir: str, month: str = "") -> List[Dict]:
                     with open(file_path, 'r', encoding='utf-8-sig') as f:
                         reader = csv.DictReader(f)
                         for row in reader:
-                            # 添加文件来源信息
                             row['_source_file'] = filename
                             all_cases.append(row)
                 except Exception as e:
@@ -240,15 +158,7 @@ def load_case_data(data_dir: str, month: str = "") -> List[Dict]:
     return all_cases
 
 def get_available_months(data_dir: str) -> List[str]:
-    """
-    获取数据目录下所有可用的月份
-    
-    Args:
-        data_dir: 数据目录路径
-        
-    Returns:
-        可用月份列表，格式为YYYYMM
-    """
+    """获取数据目录下所有可用的月份"""
     months = []
     
     if not os.path.exists(data_dir):
@@ -256,135 +166,106 @@ def get_available_months(data_dir: str) -> List[str]:
     
     for filename in os.listdir(data_dir):
         if filename.startswith('cases-') and filename.endswith('.csv'):
-            # 提取月份信息
             match = re.search(r'cases-(\d{6})\.csv', filename)
             if match:
                 months.append(match.group(1))
     
     return sorted(months)
 
-def extract_month_from_text(text: str) -> str:
+def format_aligned_table(headers: List[str], rows: List[List[str]], title: str = None) -> str:
     """
-    从自然语言文本中提取月份信息
+    生成对齐的表格格式
     
     Args:
-        text: 用户输入的文本
+        headers: 表格头部列表
+        rows: 表格行数据列表
+        title: 可选的表格标题
         
     Returns:
-        提取的月份，格式为YYYYMM，如果未找到则返回空字符串
+        格式化的对齐表格字符串
     """
-    import re
-    from datetime import datetime
+    if not rows:
+        return f"{title}\n\n(无数据)" if title else "(无数据)"
     
-    # 当前年份
-    current_year = datetime.now().year
+    # 计算每列的最大宽度（考虑中文字符）
+    def get_display_width(text):
+        """计算字符串的显示宽度（中文字符算2个宽度）"""
+        width = 0
+        for char in str(text):
+            if ord(char) > 127:  # 中文字符
+                width += 2
+            else:  # 英文字符
+                width += 1
+        return width
     
-    # 匹配模式
-    patterns = [
-        r'(\d{4})[年\-]?(\d{1,2})[月份]?',  # 2025年7月, 2025-07
-        r'(\d{6})',  # 202507
-        r'(\d{1,2})[月份]',  # 7月, 7月份
-    ]
+    # 计算列宽
+    col_widths = []
+    for i, header in enumerate(headers):
+        max_width = get_display_width(header)
+        for row in rows:
+            if i < len(row):
+                max_width = max(max_width, get_display_width(row[i]))
+        col_widths.append(max_width + 2)  # 额外padding
     
-    for pattern in patterns:
-        match = re.search(pattern, text)
-        if match:
-            if len(match.group(1)) == 6:  # 202507格式
-                return match.group(1)
-            elif len(match.group(1)) == 4:  # 2025年7月格式
-                year = match.group(1)
-                month = match.group(2).zfill(2)
-                return f"{year}{month}"
-            elif len(match.group(1)) <= 2:  # 7月格式
-                month = match.group(1).zfill(2)
-                return f"{current_year}{month}"
+    # 生成表格
+    table_lines = []
     
-    return ""
+    if title:
+        table_lines.append(f"## {title}")
+        table_lines.append("")
+    
+    # 表格头部
+    header_line = "|"
+    separator_line = "|"
+    for i, (header, width) in enumerate(zip(headers, col_widths)):
+        padding = width - get_display_width(header)
+        header_line += f" {header}{' ' * padding}|"
+        separator_line += f"{'-' * (width + 1)}|"
+    
+    table_lines.append(header_line)
+    table_lines.append(separator_line)
+    
+    # 表格内容
+    for row in rows:
+        row_line = "|"
+        for i, (cell, width) in enumerate(zip(row, col_widths)):
+            cell_str = str(cell)
+            padding = width - get_display_width(cell_str)
+            row_line += f" {cell_str}{' ' * padding}|"
+        table_lines.append(row_line)
+    
+    return "\n".join(table_lines)
+
+# 创建FastMCP服务器实例
+mcp = FastMCP(
+    "case-analyzer",
+    instructions="""
+    工单分析服务器 - 专业的技术支持工单数据分析工具
+    
+    核心功能：
+    - 按月份、类别、付费账户、服务等维度分析工单
+    - 支持客户名称映射
+    - 生成美化表格输出
+    - 统计General Guidance工单
+    
+    主要工具：
+    - analyze_cases_by_category: 按类别统计
+    - analyze_cases_by_payer: 按付费账户统计（含表格输出）
+    - analyze_cases_by_service: 按服务统计
+    - analyze_general_guidance_cases: General Guidance统计
+    - get_available_months: 获取可用月份
+    """
+)
 
 @mcp.tool()
-def analyze_monthly_cases(query: str = Field(description="用户的查询文本，如'7月份工单情况'、'分析2025年7月的工单'")) -> Dict:
-    """
-    智能分析月份工单情况 - 从用户查询中自动提取月份信息
-    
-    当用户询问以下问题时使用此工具：
-    - "7月份工单情况"
-    - "分析2025年7月的工单"
-    - "202507工单分析"
-    - "7月工单类别分布"
-    - "工单综合分析"
-    - "2025年7月份所有付费账户工单详细情况"
-    
-    这个工具会自动从用户查询中提取月份信息，然后进行综合分析。
-    如果查询中包含"详细情况"、"表格"、"表"等关键词，会优先使用美化表格展示。
-    
-    Args:
-        query: 用户的查询文本
-        
-    Returns:
-        基于提取月份的综合工单分析报告
-    """
-    # 从查询中提取月份
-    month = extract_month_from_text(query)
-    
-    # 检查是否需要美化表格展示
-    beautiful_table_keywords = ["详细情况", "详细表格", "美化表格", "所有付费账户工单详细情况"]
-    needs_beautiful_table = any(keyword in query for keyword in beautiful_table_keywords)
-    
-    # 检查是否需要表格式展示
-    table_keywords = ["表格", "表", "分层", "客户分层", "大客户", "中等客户", "小客户"]
-    needs_table = any(keyword in query for keyword in table_keywords)
-    
-    # 检查是否专门询问付费账户
-    payer_keywords = ["付费账户", "payer", "账户分布", "客户分布"]
-    is_payer_query = any(keyword in query for keyword in payer_keywords)
-    
-    if needs_beautiful_table and is_payer_query:
-        # 使用美化表格式付费账户分析
-        result = get_payer_accounts_beautiful_table(month)
-        result["extracted_month"] = month if month else "all"
-        result["original_query"] = query
-        result["analysis_type"] = "beautiful_table_payer_analysis"
-        return result
-    elif needs_table and is_payer_query:
-        # 使用表格式付费账户分析
-        result = analyze_payer_accounts_table(month)
-        result["extracted_month"] = month if month else "all"
-        result["original_query"] = query
-        result["analysis_type"] = "table_payer_analysis"
-        return result
-    elif is_payer_query:
-        # 使用详细付费账户分析
-        result = analyze_cases_by_payer(month)
-        result["extracted_month"] = month if month else "all"
-        result["original_query"] = query
-        result["analysis_type"] = "detailed_payer_analysis"
-        return result
-    else:
-        # 使用综合分析
-        result = get_comprehensive_case_analysis(month)
-        result["extracted_month"] = month if month else "all"
-        result["original_query"] = query
-        result["analysis_type"] = "comprehensive_analysis"
-        return result
-
-@mcp.tool()
-def get_available_months_tool() -> Dict:
-    """
-    获取工单数据目录下所有可用的月份列表
-    
-    当用户询问"有哪些月份的工单数据"、"可以分析哪些月份"时使用此工具。
-    数据目录路径自动从环境变量CASE_DATA_DIR获取。
-        
-    Returns:
-        可用月份列表和详细信息，包括文件名和格式化日期
-    """
+def get_available_months() -> Dict:
+    """获取工单数据目录下所有可用的月份列表"""
     data_dir = DATA_ROOT_DIR
     months = get_available_months(data_dir)
     
     if not months:
         return {"error": f"未找到工单数据文件在目录: {data_dir}"}
     
-    # 格式化月份信息
     month_info = []
     for month in months:
         year = month[:4]
@@ -399,28 +280,13 @@ def get_available_months_tool() -> Dict:
     return {
         "available_months": month_info,
         "total_months": len(months),
-        "date_range": f"{months[0]} to {months[-1]}" if months else "",
         "data_directory": data_dir,
         "summary": f"找到 {len(months)} 个月份的工单数据文件"
     }
+
 @mcp.tool()
 def analyze_cases_by_category(month: str = Field(default="", description="可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份")) -> Dict:
-    """
-    按工单类别(Category)统计分析工单数量和分布情况
-    
-    当用户询问以下问题时使用此工具：
-    - "工单类别分布"、"工单分类情况"
-    - "技术支持工单有多少"、"账单工单占比"
-    - "Technical support和其他类型工单比例"
-    
-    数据目录路径自动从环境变量CASE_DATA_DIR获取。
-    
-    Args:
-        month: 可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)
-        
-    Returns:
-        按类别统计的工单数量、百分比和分析范围
-    """
+    """按工单类别(Category)统计分析工单数量和分布情况"""
     data_dir = DATA_ROOT_DIR
     cases = load_case_data(data_dir, month)
     
@@ -457,32 +323,26 @@ def analyze_cases_by_category(month: str = Field(default="", description="可选
     }
 
 @mcp.tool()
-def get_payer_accounts_beautiful_table(month: str = Field(default="", description="可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份")) -> Dict:
+def analyze_cases_by_payer(month: str = Field(default="", description="可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份")) -> Dict:
     """
-    生成美化的付费账户工单分布表格，专门用于"所有付费账户工单详细情况"类查询
+    按Account PayerId统计每个payer开工单的数量，以及每个payer下多少个Category (C)是technical support和非technical support的。
+    并以表格输出。如果客户通过CUSTOMER_MAPPING_FILE提供了 payer和客户名字对应关系时，就把客户名字显示到生成的结果表格中。
+    输出表格包含以下列：客户名称 | 账户ID | 总工单数 | 技术工单数 | 非技术工单数 | 技术占比
     
-    当用户询问以下问题时使用此工具：
-    - "2025年7月份所有付费账户工单详细情况"
-    - "所有付费账户工单分布表格"
-    - "付费账户工单统计表"
-    - "客户工单详细表格"
-    
-    返回标准的markdown表格格式，包含客户名称、账户ID、总工单数、技术支持、非技术支持、技术占比等信息。
-    
-    Args:
-        month: 可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份
-        
-    Returns:
-        美化的markdown表格格式的付费账户工单分布分析
+    优化功能：
+    1. 增强客户映射文件加载，支持多种列名格式
+    2. 优化表格对齐，考虑中文字符宽度
+    3. 提供详细的调试信息
+    4. 确保显示所有payer账号
     """
     data_dir = DATA_ROOT_DIR
     cases = load_case_data(data_dir, month)
     
     if not cases:
-        month_info = f" (月份: {month})" if month and month.strip() else ""
+        month_info = f" (月份: {month})" if month else ""
         return {"error": f"未找到工单数据文件在目录: {data_dir}{month_info}"}
     
-    # 加载客户映射表
+    # 加载客户映射表（增强版）
     customer_mapping = load_customer_mapping()
     
     # 统计每个payer的工单情况
@@ -493,9 +353,19 @@ def get_payer_accounts_beautiful_table(month: str = Field(default="", descriptio
         "categories": set()
     })
     
+    # 调试信息收集
+    empty_payer_count = 0
+    unique_payers = set()
+    
     for case in cases:
         payer_id = case.get('Account PayerId', '').strip()
         category = case.get('Category (C)', '').strip()
+        
+        if not payer_id:
+            empty_payer_count += 1
+            continue
+            
+        unique_payers.add(payer_id)
         
         if payer_id:
             payer_stats[payer_id]["total_cases"] += 1
@@ -508,18 +378,27 @@ def get_payer_accounts_beautiful_table(month: str = Field(default="", descriptio
     
     # 准备表格数据
     table_data = []
+    table_rows = []
+    
+    # 确保所有payer都被处理
     for payer_id, stats in payer_stats.items():
         tech_percentage = (stats["technical_support"] / stats["total_cases"]) * 100 if stats["total_cases"] > 0 else 0
         
-        # 获取客户名称
+        # 获取客户名称（增强版映射）
         if customer_mapping and payer_id in customer_mapping:
             customer_name = customer_mapping[payer_id]
         else:
             customer_name = "未知客户"
         
+        # 为了表格对齐，截断过长的账户ID
+        display_account_id = payer_id
+        if len(payer_id) > 12:
+            display_account_id = f"{payer_id[:8]}...{payer_id[-4:]}"
+        
         table_data.append({
             "customer_name": customer_name,
             "account_id": payer_id,
+            "display_account_id": display_account_id,
             "total_cases": stats["total_cases"],
             "tech_support": stats["technical_support"],
             "non_tech": stats["non_technical_support"],
@@ -529,30 +408,30 @@ def get_payer_accounts_beautiful_table(month: str = Field(default="", descriptio
     # 按工单数量排序
     table_data.sort(key=lambda x: x["total_cases"], reverse=True)
     
-    # 生成美化的markdown表格
-    table_lines = []
+    # 准备表格行数据（添加编号）
+    table_rows = []
+    for i, data in enumerate(table_data, 1):
+        table_rows.append([
+            str(i),  # 编号
+            data["customer_name"],
+            data["display_account_id"],
+            str(data["total_cases"]),
+            str(data["tech_support"]),
+            str(data["non_tech"]),
+            f"{data['tech_percentage']:.1f}%"
+        ])
     
-    # 表格标题
+    # 生成对齐的表格（添加编号列）
     analysis_scope = f"{month}月份" if month and month.strip() else "全部"
-    table_lines.append(f"## {analysis_scope}所有付费账户工单详细情况")
-    table_lines.append("")
+    headers = ["编号", "客户名称", "账户ID", "总工单数", "技术工单数", "非技术工单数", "技术占比"]
     
-    # 表格头部
-    header = "| 客户名称 | 账户ID | 总工单数 | 技术支持 | 非技术支持 | 技术占比 |"
-    separator = "|----------|--------|----------|----------|------------|----------|"
-    table_lines.append(header)
-    table_lines.append(separator)
-    
-    # 表格内容
-    for row in table_data:
-        line = f"| {row['customer_name']} | {row['account_id']} | {row['total_cases']} | {row['tech_support']} | {row['non_tech']} | {row['tech_percentage']:.1f}% |"
-        table_lines.append(line)
+    aligned_table = format_aligned_table(
+        headers=headers,
+        rows=table_rows,
+        title=f"{analysis_scope}付费账户工单分布表（完整版 - 共{len(table_rows)}个账户）"
+    )
     
     # 添加统计摘要
-    table_lines.append("")
-    table_lines.append("### 统计摘要")
-    table_lines.append("")
-    
     total_payers = len(payer_stats)
     total_cases = sum(stats["total_cases"] for stats in payer_stats.values())
     total_tech = sum(stats["technical_support"] for stats in payer_stats.values())
@@ -562,341 +441,69 @@ def get_payer_accounts_beautiful_table(month: str = Field(default="", descriptio
     mapped_customers = sum(1 for row in table_data if customer_mapping and row['account_id'] in customer_mapping)
     
     summary_lines = [
-        f"- **总付费账户数**: {total_payers}",
-        f"- **总工单数**: {total_cases}",
-        f"- **技术支持工单**: {total_tech} ({overall_tech_percentage:.1f}%)",
-        f"- **非技术支持工单**: {total_non_tech} ({100-overall_tech_percentage:.1f}%)",
+        "",
+        "### 📊 统计摘要",
+        "",
+        f"- **总付费账户数**: {total_payers} 个",
+        f"- **总工单数**: {total_cases} 个",
+        f"- **空PayerId记录数**: {empty_payer_count} 个",
+        f"- **有效PayerId记录数**: {total_cases} 个",
+        f"- **技术支持工单**: {total_tech} 个 ({overall_tech_percentage:.1f}%)",
+        f"- **非技术支持工单**: {total_non_tech} 个 ({100-overall_tech_percentage:.1f}%)",
         f"- **客户名称映射覆盖率**: {mapped_customers}/{total_payers} ({mapped_customers/total_payers*100:.1f}%)" if total_payers > 0 else "- **客户名称映射覆盖率**: 0/0 (0%)",
-        f"- **平均每账户工单数**: {total_cases/total_payers:.1f}" if total_payers > 0 else "- **平均每账户工单数**: 0"
+        f"- **平均每账户工单数**: {total_cases/total_payers:.1f} 个" if total_payers > 0 else "- **平均每账户工单数**: 0 个"
     ]
     
-    table_lines.extend(summary_lines)
+    # 添加完整的payer列表（用于调试）
+    payer_list_lines = [
+        "",
+        "### 🔍 完整Payer账户列表（调试信息）",
+        ""
+    ]
+    for i, (payer_id, stats) in enumerate(sorted(payer_stats.items(), key=lambda x: x[1]["total_cases"], reverse=True), 1):
+        customer_name = customer_mapping.get(payer_id, "未知客户") if customer_mapping else "未知客户"
+        payer_list_lines.append(f"{i:2d}. {payer_id} ({customer_name}) - 总工单:{stats['total_cases']}, 技术:{stats['technical_support']}, 非技术:{stats['non_technical_support']}")
     
     # 添加数据来源信息
     source_files = list(set(case.get('_source_file', '') for case in cases))
-    table_lines.append("")
-    table_lines.append("### 数据来源")
-    table_lines.append("")
+    source_lines = [
+        "",
+        "### 📁 数据来源",
+        ""
+    ]
     for file in source_files:
-        table_lines.append(f"- {file}")
+        source_lines.append(f"- {file}")
     
-    beautiful_table = "\n".join(table_lines)
+    full_output = aligned_table + "\n" + "\n".join(summary_lines + payer_list_lines + source_lines)
     
     return {
-        "beautiful_table": beautiful_table,
-        "table_format": "markdown",
+        "table_output": full_output,
+        "raw_data": table_data,
         "total_accounts": total_payers,
         "total_cases": total_cases,
         "analysis_period": analysis_scope,
         "customer_mapping_rate": f"{mapped_customers/total_payers*100:.1f}%" if total_payers > 0 else "0%",
         "tech_support_rate": f"{overall_tech_percentage:.1f}%",
-        "summary": f"生成了{analysis_scope}的付费账户工单详细表格，包含{total_payers}个账户的{total_cases}个工单信息，客户名称映射覆盖率{mapped_customers/total_payers*100:.1f}%。"
-    }
-
-@mcp.tool()
-def analyze_payer_accounts_table(month: str = Field(default="", description="可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份")) -> Dict:
-    """
-    以表格形式展示付费账户工单分布分析，支持客户名称映射
-    
-    当用户询问以下问题时使用此工具：
-    - "付费账户工单分布表格"
-    - "账户工单统计表"
-    - "客户分层分析"
-    - "大客户工单情况"
-    
-    数据目录路径自动从环境变量CASE_DATA_DIR获取。
-    如果提供了客户映射文件，会显示客户名称而不是只显示账户ID。
-    
-    Args:
-        month: 可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份
-        
-    Returns:
-        表格式的付费账户工单分布分析，包含客户名称映射
-    """
-    data_dir = DATA_ROOT_DIR
-    cases = load_case_data(data_dir, month)
-    
-    if not cases:
-        month_info = f" (月份: {month})" if month and month.strip() else ""
-        return {"error": f"未找到工单数据文件在目录: {data_dir}{month_info}"}
-    
-    # 加载客户映射表
-    customer_mapping = load_customer_mapping()
-    
-    # 统计每个payer的工单情况
-    payer_stats = defaultdict(lambda: {
-        "total_cases": 0,
-        "technical_support": 0,
-        "non_technical_support": 0,
-        "categories": set()
-    })
-    
-    for case in cases:
-        payer_id = case.get('Account PayerId', '').strip()
-        category = case.get('Category (C)', '').strip()
-        
-        if payer_id:
-            payer_stats[payer_id]["total_cases"] += 1
-            payer_stats[payer_id]["categories"].add(category)
-            
-            if category.lower() == "technical support":
-                payer_stats[payer_id]["technical_support"] += 1
-            else:
-                payer_stats[payer_id]["non_technical_support"] += 1
-    
-    # 按工单数量分层并生成表格
-    large_customers = []  # ≥10工单
-    medium_customers = []  # 3-9工单
-    small_customers = []  # 1-2工单
-    
-    for payer_id, stats in payer_stats.items():
-        tech_percentage = (stats["technical_support"] / stats["total_cases"]) * 100 if stats["total_cases"] > 0 else 0
-        
-        customer_data = {
-            "payer_id": payer_id,
-            "display_name": format_customer_display(payer_id, customer_mapping),
-            "total_cases": stats["total_cases"],
-            "tech_support": stats["technical_support"],
-            "non_tech": stats["non_technical_support"],
-            "tech_percentage": tech_percentage
-        }
-        
-        if stats["total_cases"] >= 10:
-            large_customers.append(customer_data)
-        elif stats["total_cases"] >= 3:
-            medium_customers.append(customer_data)
-        else:
-            small_customers.append(customer_data)
-    
-    # 按工单数量排序
-    large_customers.sort(key=lambda x: x["total_cases"], reverse=True)
-    medium_customers.sort(key=lambda x: x["total_cases"], reverse=True)
-    small_customers.sort(key=lambda x: x["total_cases"], reverse=True)
-    
-    # 生成美化的表格式展示
-    def format_customer_table(customers, title):
-        if not customers:
-            return f"{title}\n(无)"
-        
-        table_lines = [title]
-        table_lines.append("")  # 空行分隔
-        
-        # 表格头部
-        header = "| 客户名称 | 账户ID | 总工单数 | 技术支持 | 非技术支持 | 技术占比 |"
-        separator = "|----------|--------|----------|----------|------------|----------|"
-        table_lines.append(header)
-        table_lines.append(separator)
-        
-        # 表格内容
-        for customer in customers:
-            # 提取客户名称和账户ID
-            if customer_mapping and customer['payer_id'] in customer_mapping:
-                customer_name = customer_mapping[customer['payer_id']]
-                account_id = customer['payer_id']
-            else:
-                customer_name = "未知客户"
-                account_id = customer['payer_id']
-            
-            # 格式化表格行
-            row = f"| {customer_name:<8} | {account_id:<6} | {customer['total_cases']:<8} | {customer['tech_support']:<8} | {customer['non_tech']:<10} | {customer['tech_percentage']:.1f}% |"
-            table_lines.append(row)
-        
-        return "\n".join(table_lines)
-    
-    table_sections = []
-    if large_customers:
-        table_sections.append(format_customer_table(large_customers, "### 🔥 大客户 (≥10工单)"))
-    if medium_customers:
-        table_sections.append(format_customer_table(medium_customers, "### 🎯 中等客户 (3-9工单)"))
-    if small_customers:
-        table_sections.append(format_customer_table(small_customers, "### 📱 小客户 (1-2工单)"))
-    
-    formatted_table = "\n\n".join(table_sections)
-    
-    # 统计摘要
-    total_payers = len(payer_stats)
-    total_cases = sum(stats["total_cases"] for stats in payer_stats.values())
-    large_cases = sum(c["total_cases"] for c in large_customers)
-    medium_cases = sum(c["total_cases"] for c in medium_customers)
-    small_cases = sum(c["total_cases"] for c in small_customers)
-    
-    analysis_scope = f"月份 {month} 的" if month and month.strip() else "所有"
-    source_files = list(set(case.get('_source_file', '') for case in cases))
-    
-    # 统计映射情况
-    mapped_customers = sum(1 for c in large_customers + medium_customers + small_customers 
-                          if customer_mapping and c['payer_id'] in customer_mapping)
-    
-    return {
-        "table_display": formatted_table,
-        "summary_stats": {
-            "total_payers": total_payers,
-            "total_cases": total_cases,
-            "analysis_scope": analysis_scope,
-            "customer_segments": {
-                "large_customers": f"{len(large_customers)}个账户，{large_cases}个工单 ({large_cases/total_cases*100:.1f}%)" if total_cases > 0 else "0个账户，0个工单",
-                "medium_customers": f"{len(medium_customers)}个账户，{medium_cases}个工单 ({medium_cases/total_cases*100:.1f}%)" if total_cases > 0 else "0个账户，0个工单",
-                "small_customers": f"{len(small_customers)}个账户，{small_cases}个工单 ({small_cases/total_cases*100:.1f}%)" if total_cases > 0 else "0个账户，0个工单"
-            },
-            "customer_mapping": {
-                "total_mapped": mapped_customers,
-                "total_unmapped": total_payers - mapped_customers,
-                "mapping_rate": f"{mapped_customers/total_payers*100:.1f}%" if total_payers > 0 else "0%",
-                "mapping_file": CUSTOMER_MAPPING_FILE if customer_mapping else "未提供"
-            }
+        "debug_info": {
+            "unique_payers_found": len(unique_payers),
+            "payer_stats_count": len(payer_stats),
+            "empty_payer_records": empty_payer_count,
+            "all_payers_list": sorted(list(unique_payers)),
+            "table_rows_generated": len(table_rows)
         },
-        "key_insights": {
-            "客户集中度": f"前{len(large_customers)}个大客户贡献了{large_cases/total_cases*100:.1f}%的工单" if total_cases > 0 and large_customers else "无大客户",
-            "平均工单数": f"{total_cases/total_payers:.1f}个/账户" if total_payers > 0 else "0",
-            "最活跃账户": large_customers[0]["display_name"] if large_customers else (medium_customers[0]["display_name"] if medium_customers else "无"),
-            "客户映射覆盖率": f"{mapped_customers}/{total_payers} ({mapped_customers/total_payers*100:.1f}%)" if total_payers > 0 else "0/0 (0%)"
+        "mapping_debug": {
+            "mapping_file_exists": os.path.exists(CUSTOMER_MAPPING_FILE),
+            "mapping_file_path": CUSTOMER_MAPPING_FILE,
+            "loaded_mappings": len(customer_mapping),
+            "mapped_accounts": mapped_customers,
+            "unmapped_accounts": total_payers - mapped_customers
         },
-        "source_files": source_files,
-        "summary": f"共分析了{analysis_scope} {total_payers} 个付费账户的 {total_cases} 个工单。大客户 {len(large_customers)} 个，中等客户 {len(medium_customers)} 个，小客户 {len(small_customers)} 个。客户名称映射覆盖率: {mapped_customers/total_payers*100:.1f}%。"
-    }
-
-@mcp.tool()
-def analyze_cases_by_payer(month: str = Field(default="", description="可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份")) -> Dict:
-    """
-    按Account PayerId统计每个payer开工单的数量，以及每个payer下多少个Category (C)是technical support和非technical support的
-    
-    数据目录路径自动从环境变量CASE_DATA_DIR获取。
-    
-    Args:
-        month: 可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份
-        
-    Returns:
-        按付费账户统计的工单分析
-    """
-    data_dir = DATA_ROOT_DIR
-    cases = load_case_data(data_dir, month)
-    
-    if not cases:
-        month_info = f" (月份: {month})" if month else ""
-        return {"error": f"未找到工单数据文件在目录: {data_dir}{month_info}"}
-    
-    payer_stats = defaultdict(lambda: {
-        "total_cases": 0,
-        "technical_support": 0,
-        "non_technical_support": 0,
-        "categories": set()
-    })
-    
-    for case in cases:
-        payer_id = case.get('Account PayerId', '').strip()
-        category = case.get('Category (C)', '').strip()
-        
-        if payer_id:
-            payer_stats[payer_id]["total_cases"] += 1
-            payer_stats[payer_id]["categories"].add(category)
-            
-            # 判断是否为技术支持
-            if category.lower() == 'technical support':
-                payer_stats[payer_id]["technical_support"] += 1
-            else:
-                payer_stats[payer_id]["non_technical_support"] += 1
-    
-    # 转换为可序列化的格式，并优化显示
-    payer_analysis = {}
-    for payer_id, stats in payer_stats.items():
-        tech_percentage = (stats["technical_support"] / stats["total_cases"]) * 100 if stats["total_cases"] > 0 else 0
-        non_tech_percentage = (stats["non_technical_support"] / stats["total_cases"]) * 100 if stats["total_cases"] > 0 else 0
-        
-        # 生成易读的摘要
-        if tech_percentage >= 80:
-            support_profile = "技术导向型"
-        elif tech_percentage >= 50:
-            support_profile = "技术为主型"
-        elif tech_percentage >= 20:
-            support_profile = "混合型"
-        else:
-            support_profile = "非技术型"
-        
-        payer_analysis[payer_id] = {
-            "total_cases": stats["total_cases"],
-            "support_profile": support_profile,
-            "technical_support": {
-                "count": stats["technical_support"],
-                "percentage": round(tech_percentage, 1)
-            },
-            "non_technical_support": {
-                "count": stats["non_technical_support"],
-                "percentage": round(non_tech_percentage, 1)
-            },
-            "unique_categories": list(stats["categories"]),
-            "category_count": len(stats["categories"]),
-            "summary": f"{stats['total_cases']}个工单 ({support_profile}, 技术支持{round(tech_percentage, 1)}%)"
-        }
-    
-    # 按工单总数排序
-    sorted_payers = dict(sorted(payer_analysis.items(), 
-                               key=lambda x: x[1]["total_cases"], 
-                               reverse=True))
-    
-    # 生成统计摘要
-    total_payers = len(payer_stats)
-    total_cases = sum(stats["total_cases"] for stats in payer_analysis.values())
-    
-    # 按支持类型分组统计
-    tech_oriented = sum(1 for stats in payer_analysis.values() if stats["support_profile"] == "技术导向型")
-    tech_primary = sum(1 for stats in payer_analysis.values() if stats["support_profile"] == "技术为主型")
-    mixed_type = sum(1 for stats in payer_analysis.values() if stats["support_profile"] == "混合型")
-    non_tech = sum(1 for stats in payer_analysis.values() if stats["support_profile"] == "非技术型")
-    
-    # 找出工单最多的前3个账户
-    top_3_payers = list(sorted_payers.items())[:3]
-    
-    analysis_scope = f"月份 {month} 的" if month and month.strip() else "所有"
-    source_files = list(set(case.get('_source_file', '') for case in cases))
-    
-    return {
-        "overview": {
-            "total_payers": total_payers,
-            "total_cases": total_cases,
-            "analysis_scope": analysis_scope,
-            "source_files": source_files
-        },
-        "payer_profiles": {
-            "技术导向型": f"{tech_oriented}个账户 (技术支持≥80%)",
-            "技术为主型": f"{tech_primary}个账户 (技术支持50-79%)",
-            "混合型": f"{mixed_type}个账户 (技术支持20-49%)",
-            "非技术型": f"{non_tech}个账户 (技术支持<20%)"
-        },
-        "top_accounts": {
-            f"排名{i+1}": {
-                "account_id": payer_id,
-                "summary": info["summary"],
-                "details": {
-                    "技术支持": f"{info['technical_support']['count']}个 ({info['technical_support']['percentage']}%)",
-                    "非技术支持": f"{info['non_technical_support']['count']}个 ({info['non_technical_support']['percentage']}%)",
-                    "涉及类别": f"{info['category_count']}种类别"
-                }
-            }
-            for i, (payer_id, info) in enumerate(top_3_payers)
-        },
-        "detailed_analysis": sorted_payers,
-        "insights": {
-            "最活跃账户": top_3_payers[0][0] if top_3_payers else "无",
-            "平均工单数": round(total_cases / total_payers, 1) if total_payers > 0 else 0,
-            "技术支持占主导": f"{tech_oriented + tech_primary}个账户 ({round((tech_oriented + tech_primary) / total_payers * 100, 1)}%)" if total_payers > 0 else "0%",
-            "需要关注的账户": [payer_id for payer_id, info in top_3_payers if info["total_cases"] > (total_cases / total_payers * 2)] if total_payers > 0 else []
-        },
-        "summary": f"共分析了{analysis_scope} {total_payers} 个付费账户的 {total_cases} 个工单。技术导向型账户 {tech_oriented} 个，技术为主型 {tech_primary} 个，混合型 {mixed_type} 个，非技术型 {non_tech} 个。"
+        "summary": f"生成了{analysis_scope}的完整付费账户工单分布表格，包含{total_payers}个账户的{total_cases}个工单信息，确保显示所有payer账号。客户名称映射覆盖率{mapped_customers/total_payers*100:.1f}%。"
     }
 
 @mcp.tool()
 def analyze_cases_by_service(month: str = Field(default="", description="可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份")) -> Dict:
-    """
-    结合Resolver和Type (T)列分析各个service的工单数量
-    
-    数据目录路径自动从环境变量CASE_DATA_DIR获取。
-    
-    Args:
-        month: 可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份
-        
-    Returns:
-        按服务统计的工单分析
-    """
+    """结合Resolver和Type (T)列分析各个service的工单数量"""
     data_dir = DATA_ROOT_DIR
     cases = load_case_data(data_dir, month)
     
@@ -958,17 +565,7 @@ def analyze_cases_by_service(month: str = Field(default="", description="可选�
 
 @mcp.tool()
 def analyze_general_guidance_cases(month: str = Field(default="", description="可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份")) -> Dict:
-    """
-    统计Item (I)为General Guidance的工单数量
-    
-    数据目录路径自动从环境变量CASE_DATA_DIR获取。
-    
-    Args:
-        month: 可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份
-        
-    Returns:
-        General Guidance工单的统计分析
-    """
+    """统计Item (I)为General Guidance的工单数量"""
     data_dir = DATA_ROOT_DIR
     cases = load_case_data(data_dir, month)
     
@@ -1020,91 +617,6 @@ def analyze_general_guidance_cases(month: str = Field(default="", description="�
         "summary": f"共找到{f'月份 {month} 的' if month else ''} {general_guidance_count} 个General Guidance工单，占总工单的 {round(percentage, 2)}%"
     }
 
-@mcp.tool()
-def get_comprehensive_case_analysis(month: str = Field(default="", description="可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份")) -> Dict:
-    """
-    获取综合工单分析报告，包含所有维度的统计信息
-    
-    当用户询问以下问题时使用此工具：
-    - "工单综合分析"、"整体工单情况"
-    - "7月份工单报告"、"某月综合分析"
-    - "工单总体情况"、"完整的工单分析"
-    - "生成工单报告"、"工单数据概览"
-    
-    数据目录路径自动从环境变量CASE_DATA_DIR获取。
-    
-    Args:
-        month: 可选的月份参数，格式为YYYYMM (如: 202507) 或 YYYY-MM (如: 2025-07)，留空分析所有月份
-        
-    Returns:
-        包含类别、付费账户、服务、General Guidance等所有维度的综合分析报告
-    """
-    data_dir = DATA_ROOT_DIR
-    cases = load_case_data(data_dir, month)
-    
-    if not cases:
-        month_info = f" (月份: {month})" if month else ""
-        return {"error": f"未找到工单数据文件在目录: {data_dir}{month_info}"}
-    
-    # 基础统计
-    total_cases = len(cases)
-    
-    # 按文件统计
-    file_stats = defaultdict(int)
-    for case in cases:
-        file_stats[case.get('_source_file', 'unknown')] += 1
-    
-    # 状态统计
-    status_stats = Counter()
-    severity_stats = Counter()
-    
-    for case in cases:
-        status = case.get('Status', '').strip()
-        severity = case.get('Severity', '').strip()
-        
-        if status:
-            status_stats[status] += 1
-        if severity:
-            severity_stats[severity] += 1
-    
-    # 获取各维度分析
-    category_analysis = analyze_cases_by_category(month)
-    payer_analysis = analyze_cases_by_payer(month)
-    service_analysis = analyze_cases_by_service(month)
-    guidance_analysis = analyze_general_guidance_cases(month)
-    
-    analysis_scope = f"月份 {month} 的" if month else "所有"
-    
-    return {
-        "overview": {
-            "total_cases": total_cases,
-            "files_analyzed": len(file_stats),
-            "file_breakdown": dict(file_stats),
-            "status_distribution": dict(status_stats.most_common()),
-            "severity_distribution": dict(severity_stats.most_common()),
-            "analysis_scope": analysis_scope
-        },
-        "category_analysis": category_analysis,
-        "payer_analysis": {
-            "total_payers": payer_analysis["overview"]["total_payers"],
-            "payer_profiles": payer_analysis["payer_profiles"],
-            "top_3_accounts": payer_analysis["top_accounts"],
-            "key_insights": payer_analysis["insights"]
-        },
-        "service_analysis": {
-            "total_services": service_analysis["total_services"],
-            "top_10_services": dict(list(service_analysis["service_analysis"].items())[:10])
-        },
-        "general_guidance_analysis": guidance_analysis,
-        "summary": f"""
-        {analysis_scope}综合工单分析报告:
-        - 总工单数: {total_cases}
-        - 涉及付费账户: {payer_analysis['overview']['total_payers']}
-        - 涉及服务: {service_analysis['total_services']}
-        - General Guidance工单: {guidance_analysis['general_guidance_count']} ({guidance_analysis['percentage']}%)
-        - 主要类别: {list(category_analysis['categories'].keys())[:3] if 'categories' in category_analysis else []}
-        """
-    }
 
 if __name__ == "__main__":
     # 运行MCP服务器
