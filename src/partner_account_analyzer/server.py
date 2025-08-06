@@ -1217,7 +1217,7 @@ def _calculate_naming_consistency(accounts: List[AccountRecord]) -> float:
 
 @mcp.tool()
 def analyze_payer_detailed_distribution(
-    customer: str = Field(description="客户名称 (如: 泰岳, verycloud)"),
+    customer: str = Field(description="客户名称 (如: A, B)"),
     date: str = Field(description="分析日期 (格式: 0731)")
 ) -> str:
     """深度分析指定客户的Payer账号分布和每个Payer的详细特征"""
@@ -1352,7 +1352,7 @@ def _calculate_gini_coefficient(values: List[int]) -> float:
 
 @mcp.tool()
 def analyze_industry_insights(
-    customer: str = Field(description="客户名称 (如: 泰岳, verycloud)"),
+    customer: str = Field(description="客户名称 (如: A, B)"),
     date: str = Field(description="分析日期 (格式: 0731)")
 ) -> str:
     """从账号信息中分析推断行业特征和业务模式"""
@@ -1531,7 +1531,7 @@ def analyze_industry_insights(
 
 @mcp.tool()
 def analyze_comprehensive_business_insights(
-    customer: str = Field(description="客户名称 (如: 泰岳, verycloud)"),
+    customer: str = Field(description="客户名称 (如: A, B)"),
     date: str = Field(description="分析日期 (格式: 0731)")
 ) -> str:
     """综合分析指定客户的业务洞察，整合Payer分布、行业特征、命名模式等多维度分析"""

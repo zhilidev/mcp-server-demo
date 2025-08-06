@@ -1,1 +1,1 @@
-# AWS Account Analyzer MCP Server
+# Account Analyzer MCP Server
