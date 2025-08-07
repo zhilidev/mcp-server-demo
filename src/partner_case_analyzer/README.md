@@ -2,7 +2,7 @@
 
 工单分析的MCP服务器，支持多维度工单统计分析和深度业务洞察。专门用于分析技术支持工单的分布情况、服务使用模式和客户支持需求。
 
-## 🚀 核心功能
+## 核心功能
 
 1. **Category分析** - 按工单类别统计分布情况
 2. **Payer账户分析** - 分析每个付费账户的工单情况和技术支持分布
@@ -34,7 +34,7 @@ cd /path/to/mcp-server-demo
 pip install -r requirements.txt
 ```
 
-**Step 2. 配置AI助手，将MCP配置添加到AI助手配置文件。重启配置AI助手。**
+**Step 2. 配置Amazon Q，将MCP配置添加到Amazon Q配置文件。重启配置Amazon Q。**
 
 ```json
 {
@@ -53,7 +53,7 @@ pip install -r requirements.txt
 }
 ```
 - CASE_DATA_DIR：默认导出的case csv文件即可
-- CUSTOMER_MAPPING_FILE：需要包含payer, 客户 两列
+- CUSTOMER_MAPPING_FILE：需要包含**payer**, **客户**两列
 
 ## 示例提示词
 
@@ -84,9 +84,6 @@ pip install -r requirements.txt
 - `Subject` - 工单主题
 - `Status` - 工单状态 (如: Resolved, Pending等)
 - `Severity` - 严重程度 (如: Normal, High, Low等)
-
-
-**🎉 现在就开始使用工单分析功能，让数据为你的客户支持决策提供强有力的支持！**
 
 
 **Backup prompt：**
