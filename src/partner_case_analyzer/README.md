@@ -9,15 +9,16 @@
 3. **Service服务分析** - 结合Resolver和Type分析各服务的工单分布
 4. **General Guidance统计** - 专门统计General Guidance类型的工单
 
+## 前提
 
-## 数据目录结构
-
+**1. Case数据**：目录结构推荐如下
 ```
 /path/to/case-data/
 ├── cases-202507.csv                      # 2025年7月工单数据
 ├── cases-202508.csv                      # 2025年8月工单数据
 └── cases-202509.csv                      # 2025年9月工单数据
 ```
+**2. Payer和客户mapping关系**：Excel文件，要求包含**payer**, **客户**两列
 
 ## 使用步骤
 
